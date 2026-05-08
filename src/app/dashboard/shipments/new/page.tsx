@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, User, MapPin, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Package, User, MapPin, ArrowLeft, CheckCircle, BookUser, X, Search } from 'lucide-react'
 
 const STATES_MX = [
   'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas',
@@ -24,6 +24,9 @@ export default function NewShipmentPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [showClientPicker, setShowClientPicker] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+  const [clientSearch, setClientSearch] = useState('')
 
   const [form, setForm] = useState({
     senderName: '', senderPhone: '', senderEmail: '',
@@ -34,10 +37,31 @@ export default function NewShipmentPage() {
     declaredValue: '', serviceType: 'STANDARD', notes: '',
   })
 
+  useEffect(() => {
+    if (!showClientPicker) return
+    fetch(`/api/clients${clientSearch ? `?search=${encodeURIComponent(clientSearch)}` : ''}`)
+      .then(r => r.json()).then(d => setClients(d.clients ?? []))
+  }, [showClientPicker, clientSearch])
+
   const u = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
   const inp = (field: string, props?: any) => (
     <input className="input !py-1.5 !text-sm" value={(form as any)[field]} onChange={e => u(field, e.target.value)} {...props} />
   )
+
+  function selectClient(c: any) {
+    setForm(f => ({
+      ...f,
+      senderName: c.name ?? '',
+      senderPhone: c.phone ?? '',
+      senderEmail: c.email ?? '',
+      originStreet: c.street ?? '',
+      originCity: c.city ?? '',
+      originState: c.state ?? '',
+      originZip: c.zip ?? '',
+    }))
+    setShowClientPicker(false)
+    setClientSearch('')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -100,11 +124,21 @@ export default function NewShipmentPage() {
 
         {/* Remitente */}
         <div className="card !p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center">
-              <User className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-800">Remitente <span className="text-gray-400 font-normal">(EE.UU.)</span></h2>
             </div>
-            <h2 className="text-sm font-semibold text-gray-800">Remitente <span className="text-gray-400 font-normal">(EE.UU.)</span></h2>
+            <button
+              type="button"
+              onClick={() => setShowClientPicker(true)}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              <BookUser className="w-3.5 h-3.5" />
+              Directorio
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <F label="Nombre *" span={2}>{inp('senderName', { required: true })}</F>
@@ -187,6 +221,53 @@ export default function NewShipmentPage() {
         </div>
 
       </form>
+
+      {/* Modal directorio de clientes */}
+      {showClientPicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">Seleccionar remitente</h2>
+              <button onClick={() => { setShowClientPicker(false); setClientSearch('') }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-5 py-3 border-b border-gray-100">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  className="input pl-9 !py-1.5 !text-sm"
+                  placeholder="Buscar cliente..."
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto divide-y divide-gray-50">
+              {clients.length === 0 ? (
+                <div className="py-10 text-center text-gray-400 text-sm">
+                  {clientSearch ? 'Sin resultados' : 'No hay clientes registrados'}
+                </div>
+              ) : (
+                clients.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => selectClient(c)}
+                    className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors"
+                  >
+                    <p className="font-medium text-gray-900 text-sm">{c.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {[c.phone, c.city, c.state].filter(Boolean).join(' · ')}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -29,25 +29,28 @@ export async function GET(request: NextRequest) {
     if (session?.user) {
       const { id: supabaseId, email, user_metadata } = session.user
 
-      // Busca por supabaseId o email (para vincular usuarios pre-existentes)
-      let user = await prisma.user.findFirst({
-        where: { OR: [{ supabaseId }, { email: email ?? '' }] },
-      })
+      try {
+        let user = await prisma.user.findFirst({
+          where: { OR: [{ supabaseId }, { email: email ?? '' }] },
+        })
 
-      if (!user && email) {
-        user = await prisma.user.create({
-          data: {
-            supabaseId,
-            email,
-            name: user_metadata?.full_name ?? email.split('@')[0],
-            role: 'AGENCY',
-          },
-        })
-      } else if (user && !user.supabaseId) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { supabaseId },
-        })
+        if (!user && email) {
+          user = await prisma.user.create({
+            data: {
+              supabaseId,
+              email,
+              name: user_metadata?.full_name ?? email.split('@')[0],
+              role: 'AGENCY',
+            },
+          })
+        } else if (user && !user.supabaseId) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { supabaseId },
+          })
+        }
+      } catch (err) {
+        console.error('[auth/callback] DB error:', err)
       }
     }
   }

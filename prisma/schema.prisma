@@ -19,6 +19,7 @@ model Agency {
 
   users     User[]
   shipments Shipment[]
+  clients   Client[]
 }
 
 model User {
@@ -94,6 +95,23 @@ model Shipment {
   destination   Address? @relation("Destination", fields: [destinationId], references: [id])
 
   events TrackingEvent[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  street    String?
+  city      String?
+  state     String?
+  zip       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agencyId  String
+  agency    Agency   @relation(fields: [agencyId], references: [id])
 }
 
 model TrackingEvent {
