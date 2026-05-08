@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Package, LayoutDashboard, List, Building2, Users, LogOut, TruckIcon, BookUser } from 'lucide-react'
+import { Package, LayoutDashboard, List, Building2, Users, LogOut, TruckIcon, BookUser, X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
@@ -10,6 +10,7 @@ interface SidebarProps {
   role: string
   agencyName?: string | null
   userName?: string | null
+  onClose?: () => void
 }
 
 const adminLinks = [
@@ -33,7 +34,7 @@ const driverLinks = [
   { href: '/dashboard/shipments', label: 'Envíos', icon: Package },
 ]
 
-export function Sidebar({ role, agencyName, userName }: SidebarProps) {
+export function Sidebar({ role, agencyName, userName, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const links = role === 'ADMIN' ? adminLinks : role === 'DRIVER' ? driverLinks : agencyLinks
@@ -49,10 +50,15 @@ export function Sidebar({ role, agencyName, userName }: SidebarProps) {
     <aside className="flex flex-col w-64 min-h-screen bg-blue-900 text-white">
       <div className="flex items-center gap-3 px-6 py-5 border-b border-blue-800">
         <Image src="/logo.png" alt="HurryOps" width={36} height={36} className="rounded-lg flex-shrink-0" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-bold text-sm truncate">HurryOps</p>
           <p className="text-xs text-blue-300 truncate">Logistics</p>
         </div>
+        {onClose && (
+          <button onClick={onClose} className="text-blue-300 hover:text-white md:hidden">
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {agencyName && (

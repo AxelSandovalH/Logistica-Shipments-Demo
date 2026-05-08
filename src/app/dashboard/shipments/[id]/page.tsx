@@ -64,7 +64,7 @@ export default function ShipmentDetailPage() {
   const nextStatuses = NEXT_STATUSES[shipment.status] ?? []
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="btn-secondary !px-2 !py-2">
           <ArrowLeft className="w-4 h-4" />

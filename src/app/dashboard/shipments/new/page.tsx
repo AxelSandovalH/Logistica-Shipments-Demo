@@ -121,7 +121,7 @@ export default function NewShipmentPage() {
       </div>
 
       {/* Form */}
-      <form id="shipment-form" onSubmit={handleSubmit} className="flex-1 grid grid-cols-3 gap-4 p-5 overflow-auto">
+      <form id="shipment-form" onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 md:p-5 overflow-auto">
 
         {/* Remitente */}
         <div className="card !p-4">
