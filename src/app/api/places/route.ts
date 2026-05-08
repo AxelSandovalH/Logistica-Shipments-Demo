@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   })
 
   const data = await res.json()
+  console.log('[places] status:', res.status, 'response:', JSON.stringify(data).slice(0, 500))
 
   if (!res.ok) {
     console.error('[places] API error:', JSON.stringify(data))
