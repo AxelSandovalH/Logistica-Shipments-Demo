@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agency {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  email     String?
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  shipments Shipment[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String?  @unique
+  email      String   @unique
+  name       String
+  role       String   @default("AGENCY")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  agencyId   String?
+  agency     Agency?  @relation(fields: [agencyId], references: [id])
+
+  createdShipments Shipment[]      @relation("CreatedBy")
+  trackingEvents   TrackingEvent[] @relation("CreatedBy")
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  street     String
+  colonia    String?
+  city       String
+  state      String
+  zip        String
+  country    String  @default("MX")
+  references String?
+  lat        Float?
+  lng        Float?
+
+  originShipments      Shipment[] @relation("Origin")
+  destinationShipments Shipment[] @relation("Destination")
+}
+
+model Shipment {
+  id          String   @id @default(cuid())
+  guideNumber String   @unique
+  status      String   @default("RECEIVED")
+
+  senderName    String
+  senderPhone   String?
+  senderEmail   String?
+
+  recipientName  String
+  recipientPhone String?
+  recipientEmail String?
+
+  weight        Float?
+  packageType   String  @default("PACKAGE")
+  description   String?
+  pieces        Int     @default(1)
+  declaredValue Float?
+
+  serviceType  String   @default("STANDARD")
+  notes        String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  estimatedAt DateTime?
+  deliveredAt DateTime?
+
+  agencyId    String
+  agency      Agency   @relation(fields: [agencyId], references: [id])
+
+  createdById String?
+  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+
+  originId      String?
+  origin        Address? @relation("Origin", fields: [originId], references: [id])
+
+  destinationId String?
+  destination   Address? @relation("Destination", fields: [destinationId], references: [id])
+
+  events TrackingEvent[]
+}
+
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  status      String
+  description String
+  location    String?
+  createdAt   DateTime @default(now())
+
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+}
