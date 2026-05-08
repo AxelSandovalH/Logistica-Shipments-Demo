@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Package, User, MapPin, ArrowLeft, CheckCircle, BookUser, X, Search } from 'lucide-react'
+import { AddressAutocomplete } from '@/components/AddressAutocomplete'
 
 const STATES_MX = [
   'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas',
@@ -144,7 +145,16 @@ export default function NewShipmentPage() {
             <F label="Nombre *" span={2}>{inp('senderName', { required: true })}</F>
             <F label="Teléfono">{inp('senderPhone', { type: 'tel' })}</F>
             <F label="Email">{inp('senderEmail', { type: 'email' })}</F>
-            <F label="Calle y número" span={2}>{inp('originStreet')}</F>
+            <F label="Calle y número" span={2}>
+              <AddressAutocomplete
+                country="us"
+                className="input !py-1.5 !text-sm"
+                placeholder="Escribe para buscar..."
+                value={form.originStreet}
+                onChange={v => u('originStreet', v)}
+                onSelect={r => setForm(f => ({ ...f, originStreet: r.street, originCity: r.city, originState: r.state, originZip: r.zip }))}
+              />
+            </F>
             <F label="Ciudad">{inp('originCity')}</F>
             <F label="Estado">
               <select className="input !py-1.5 !text-sm" value={form.originState} onChange={e => u('originState', e.target.value)}>
@@ -168,7 +178,16 @@ export default function NewShipmentPage() {
             <F label="Nombre *" span={2}>{inp('recipientName', { required: true })}</F>
             <F label="Teléfono">{inp('recipientPhone', { type: 'tel' })}</F>
             <F label="Email">{inp('recipientEmail', { type: 'email' })}</F>
-            <F label="Calle y número" span={2}>{inp('destStreet', { required: true })}</F>
+            <F label="Calle y número" span={2}>
+              <AddressAutocomplete
+                country="mx"
+                className="input !py-1.5 !text-sm"
+                placeholder="Escribe para buscar..."
+                value={form.destStreet}
+                onChange={v => u('destStreet', v)}
+                onSelect={r => setForm(f => ({ ...f, destStreet: r.street, destColonia: r.colonia ?? f.destColonia, destCity: r.city, destState: r.state, destZip: r.zip }))}
+              />
+            </F>
             <F label="Colonia">{inp('destColonia')}</F>
             <F label="Ciudad *">{inp('destCity', { required: true })}</F>
             <F label="Estado *">

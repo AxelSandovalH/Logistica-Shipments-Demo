@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { Users, Plus, Search, Edit2, Trash2, X, Phone, Mail, MapPin } from 'lucide-react'
+import { AddressAutocomplete } from '@/components/AddressAutocomplete'
 
 const STATES_US = ['California','Texas','Florida','New York','Arizona','Nevada','Illinois','Washington']
 
@@ -187,7 +188,14 @@ export default function ClientsPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Calle y número</label>
-                {inp('street')}
+                <AddressAutocomplete
+                  country="us"
+                  className="input !py-1.5 !text-sm"
+                  placeholder="Escribe para buscar..."
+                  value={form.street}
+                  onChange={v => u('street', v)}
+                  onSelect={r => setForm(f => ({ ...f, street: r.street, city: r.city, state: r.state, zip: r.zip }))}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
