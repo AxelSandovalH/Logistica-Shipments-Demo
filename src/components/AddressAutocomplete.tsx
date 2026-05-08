@@ -38,7 +38,7 @@ export function AddressAutocomplete({ placeholder, country, className, value, on
 
   function handleChange(val: string) {
     onChange(val)
-    clearTimeout(debounceRef.current)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => fetchPredictions(val), 350)
   }
 
