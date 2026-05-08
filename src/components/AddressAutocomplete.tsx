@@ -23,7 +23,7 @@ export function AddressAutocomplete({ placeholder, country, className, value, on
   const [predictions, setPredictions] = useState<any[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const debounceRef = useRef<NodeJS.Timeout>()
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const fetchPredictions = useCallback(async (input: string) => {
