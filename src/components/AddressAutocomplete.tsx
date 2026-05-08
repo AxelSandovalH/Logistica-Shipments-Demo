@@ -56,14 +56,17 @@ export function AddressAutocomplete({ placeholder, country, className, value, on
     if (!data.result?.address_components) return
 
     const get = (type: string) =>
-      data.result.address_components.find((c: any) => c.types.includes(type))
+      data.result.address_components?.find((c: any) => c.types?.includes(type) || c.componentType === type)
 
-    const streetNumber = get('street_number')?.long_name ?? ''
-    const route = get('route')?.long_name ?? ''
-    const colonia = get('sublocality_level_1')?.long_name ?? get('neighborhood')?.long_name ?? ''
-    const city = get('locality')?.long_name ?? get('administrative_area_level_2')?.long_name ?? ''
-    const state = get('administrative_area_level_1')?.long_name ?? ''
-    const zip = get('postal_code')?.long_name ?? ''
+    const getLong = (type: string) =>
+      get(type)?.longText ?? get(type)?.long_name ?? ''
+
+    const streetNumber = getLong('street_number')
+    const route = getLong('route')
+    const colonia = getLong('sublocality_level_1') || getLong('neighborhood')
+    const city = getLong('locality') || getLong('administrative_area_level_2')
+    const state = getLong('administrative_area_level_1')
+    const zip = getLong('postal_code')
     const street = [route, streetNumber].filter(Boolean).join(' ')
 
     onChange(street)
