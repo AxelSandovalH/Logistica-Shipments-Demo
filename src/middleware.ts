@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -23,14 +24,41 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user: sbUser } } = await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
 
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  // Sin sesión → al login
+  if (!sbUser && pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && request.nextUrl.pathname === '/login') {
+  // Ya autenticado → no volver al login
+  if (sbUser && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Verificar status del usuario en BD para rutas del dashboard
+  if (sbUser && pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/pending')) {
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: sbUser.id },
+      select: { status: true },
+    })
+
+    if (dbUser?.status === 'PENDING') {
+      return NextResponse.redirect(new URL('/dashboard/pending', request.url))
+    }
+  }
+
+  // Evitar que usuarios activos accedan a la página de pendiente
+  if (sbUser && pathname.startsWith('/dashboard/pending')) {
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: sbUser.id },
+      select: { status: true },
+    })
+
+    if (dbUser?.status !== 'PENDING') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
   return supabaseResponse

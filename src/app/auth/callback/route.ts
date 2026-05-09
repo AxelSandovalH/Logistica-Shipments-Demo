@@ -35,12 +35,15 @@ export async function GET(request: NextRequest) {
         })
 
         if (!user && email) {
+          // Auto-registro desde hurryops.com → queda pendiente de aprobación del admin
           user = await prisma.user.create({
             data: {
               supabaseId,
               email,
               name: user_metadata?.full_name ?? email.split('@')[0],
               role: 'AGENCY',
+              status: 'PENDING',
+              active: false,
             },
           })
         } else if (user && !user.supabaseId) {

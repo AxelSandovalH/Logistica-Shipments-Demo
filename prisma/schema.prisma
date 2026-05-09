@@ -28,6 +28,7 @@ model User {
   email      String   @unique
   name       String
   role       String   @default("AGENCY")
+  status     String   @default("ACTIVE")   // PENDING | ACTIVE | INACTIVE
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

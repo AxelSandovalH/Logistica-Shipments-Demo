@@ -17,6 +17,10 @@ export default function ClientsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Modal confirmar eliminación
+  const [deleting, setDeleting] = useState<any>(null)
+  const [deleting2, setDeleting2] = useState(false)
+
   const fetchClients = useCallback(async () => {
     setLoading(true)
     const params = search ? `?search=${encodeURIComponent(search)}` : ''
@@ -59,9 +63,12 @@ export default function ClientsPage() {
     fetchClients()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('¿Eliminar este cliente?')) return
-    await fetch(`/api/clients/${id}`, { method: 'DELETE' })
+  async function handleDelete() {
+    if (!deleting) return
+    setDeleting2(true)
+    await fetch(`/api/clients/${deleting.id}`, { method: 'DELETE' })
+    setDeleting2(false)
+    setDeleting(null)
     fetchClients()
   }
 
@@ -128,7 +135,7 @@ export default function ClientsPage() {
                   <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <button onClick={() => setDeleting(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -161,7 +168,34 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal confirmar eliminación */}
+      {deleting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 text-center mb-1">¿Eliminar cliente?</h2>
+            <p className="text-sm text-gray-500 text-center mb-4">
+              <span className="font-semibold text-gray-700">{deleting.name}</span> será eliminado permanentemente.
+            </p>
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => setDeleting(null)}>
+                Cancelar
+              </button>
+              <button
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                onClick={handleDelete}
+                disabled={deleting2}
+              >
+                {deleting2 ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal crear / editar */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">

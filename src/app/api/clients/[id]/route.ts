@@ -14,9 +14,21 @@ const Schema = z.object({
   notes: z.string().optional(),
 })
 
+async function getClientAndVerify(id: string, userId: string, role: string, agencyId: string | null) {
+  const client = await prisma.client.findUnique({ where: { id } })
+  if (!client) return { error: 'Cliente no encontrado', status: 404 }
+  if (role !== 'ADMIN' && client.agencyId !== agencyId) {
+    return { error: 'Sin acceso', status: 403 }
+  }
+  return { client }
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { error, status } = await getClientAndVerify(params.id, user.id, user.role, user.agencyId)
+  if (error) return NextResponse.json({ error }, { status })
 
   const body = await req.json()
   const parsed = Schema.safeParse(body)
@@ -32,6 +44,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { error, status } = await getClientAndVerify(params.id, user.id, user.role, user.agencyId)
+  if (error) return NextResponse.json({ error }, { status })
 
   await prisma.client.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })

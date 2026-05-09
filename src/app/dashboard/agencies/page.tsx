@@ -1,16 +1,27 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Building2, Plus, Package, Users } from 'lucide-react'
+import { Building2, Plus, Package, Users, Edit2, Trash2, X } from 'lucide-react'
+
+const empty = { name: '', code: '', email: '', phone: '' }
 
 export default function AgenciesPage() {
   const [agencies, setAgencies] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', code: '', email: '', phone: '' })
+
+  // Modal crear / editar
+  const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
+  const [form, setForm] = useState({ ...empty })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Modal confirmar eliminar
+  const [deleting, setDeleting] = useState<any>(null)
+  const [deleting2, setDeleting2] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
   async function fetchAgencies() {
+    setLoading(true)
     const res = await fetch('/api/agencies')
     if (res.ok) {
       const data = await res.json()
@@ -21,25 +32,75 @@ export default function AgenciesPage() {
 
   useEffect(() => { fetchAgencies() }, [])
 
-  async function handleCreate(e: React.FormEvent) {
+  function openNew() {
+    setEditing(null)
+    setForm({ ...empty })
+    setError('')
+    setShowModal(true)
+  }
+
+  function openEdit(agency: any) {
+    setEditing(agency)
+    setForm({
+      name: agency.name ?? '',
+      code: agency.code ?? '',
+      email: agency.email ?? '',
+      phone: agency.phone ?? '',
+    })
+    setError('')
+    setShowModal(true)
+  }
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     setError('')
-    const res = await fetch('/api/agencies', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, code: form.code.toUpperCase() }),
-    })
+
+    const payload = { ...form, code: form.code.toUpperCase() }
+    const res = editing
+      ? await fetch(`/api/agencies/${editing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      : await fetch('/api/agencies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
     const data = await res.json()
     setSaving(false)
+
     if (!res.ok) {
-      setError(typeof data.error === 'string' ? data.error : 'Error al crear la agencia')
+      setError(typeof data.error === 'string' ? data.error : 'Error al guardar la agencia')
       return
     }
-    setShowForm(false)
-    setForm({ name: '', code: '', email: '', phone: '' })
+    setShowModal(false)
     fetchAgencies()
   }
+
+  function openDelete(agency: any) {
+    setDeleting(agency)
+    setDeleteError('')
+  }
+
+  async function handleDelete() {
+    if (!deleting) return
+    setDeleting2(true)
+    setDeleteError('')
+    const res = await fetch(`/api/agencies/${deleting.id}`, { method: 'DELETE' })
+    setDeleting2(false)
+    if (!res.ok) {
+      const data = await res.json()
+      setDeleteError(typeof data.error === 'string' ? data.error : 'Error al eliminar')
+      return
+    }
+    setDeleting(null)
+    fetchAgencies()
+  }
+
+  const u = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
 
   return (
     <div className="p-8">
@@ -48,12 +109,13 @@ export default function AgenciesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Agencias</h1>
           <p className="text-sm text-gray-500">{agencies.length} agencias registradas</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(true)}>
+        <button className="btn-primary" onClick={openNew}>
           <Plus className="w-4 h-4" />
           Nueva agencia
         </button>
       </div>
 
+      {/* Grid de agencias */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <p className="text-gray-400 col-span-3">Cargando...</p>
@@ -67,9 +129,25 @@ export default function AgenciesPage() {
                 <p className="font-semibold text-gray-900 truncate">{a.name}</p>
                 <p className="text-xs text-gray-500 font-mono">{a.code}</p>
               </div>
-              <span className={`badge ${a.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                {a.active ? 'Activa' : 'Inactiva'}
-              </span>
+              <div className="flex items-center gap-1">
+                <span className={`badge ${a.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {a.active ? 'Activa' : 'Inactiva'}
+                </span>
+                <button
+                  onClick={() => openEdit(a)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Editar"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => openDelete(a)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <div className="mt-4 flex gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
@@ -86,35 +164,111 @@ export default function AgenciesPage() {
         ))}
       </div>
 
-      {/* Modal nueva agencia */}
-      {showForm && (
+      {/* Modal crear / editar */}
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-bold mb-4">Nueva Agencia</h2>
-            <form onSubmit={handleCreate} className="space-y-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">
+                {editing ? 'Editar agencia' : 'Nueva agencia'}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 space-y-4">
               <div>
                 <label className="label">Nombre *</label>
-                <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                <input
+                  className="input"
+                  value={form.name}
+                  onChange={e => u('name', e.target.value)}
+                  required
+                />
               </div>
               <div>
                 <label className="label">Código (ej: MNZX) *</label>
-                <input className="input uppercase" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} maxLength={10} required />
+                <input
+                  className="input uppercase"
+                  value={form.code}
+                  onChange={e => u('code', e.target.value.toUpperCase())}
+                  maxLength={10}
+                  required
+                />
                 <p className="text-xs text-gray-400 mt-1">Se usa para generar los números de guía</p>
               </div>
               <div>
                 <label className="label">Email</label>
-                <input type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                <input
+                  type="email"
+                  className="input"
+                  value={form.email}
+                  onChange={e => u('email', e.target.value)}
+                />
               </div>
               <div>
                 <label className="label">Teléfono</label>
-                <input className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                <input
+                  className="input"
+                  value={form.phone}
+                  onChange={e => u('phone', e.target.value)}
+                />
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {editing && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="active"
+                    checked={(form as any).active ?? true}
+                    onChange={e => setForm(f => ({ ...f, active: e.target.checked } as any))}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  <label htmlFor="active" className="text-sm text-gray-700">Agencia activa</label>
+                </div>
+              )}
+              {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}
               <div className="flex gap-3 pt-2">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setShowForm(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary flex-1" disabled={saving}>{saving ? 'Guardando...' : 'Crear agencia'}</button>
+                <button type="button" className="btn-secondary flex-1" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary flex-1" disabled={saving}>
+                  {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear agencia'}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar eliminación */}
+      {deleting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 text-center mb-1">¿Eliminar agencia?</h2>
+            <p className="text-sm text-gray-500 text-center mb-1">
+              <span className="font-semibold text-gray-700">{deleting.name}</span>
+            </p>
+            <p className="text-xs text-gray-400 text-center mb-4">
+              Esta acción no se puede deshacer. Solo es posible si la agencia no tiene envíos ni usuarios asociados.
+            </p>
+            {deleteError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2 mb-3 text-center">{deleteError}</p>
+            )}
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={() => setDeleting(null)}>
+                Cancelar
+              </button>
+              <button
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                onClick={handleDelete}
+                disabled={deleting2}
+              >
+                {deleting2 ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
