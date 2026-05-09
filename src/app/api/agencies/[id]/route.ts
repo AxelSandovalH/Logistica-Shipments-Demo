@@ -36,10 +36,40 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
-  try {
-    await prisma.agency.delete({ where: { id: params.id } })
-    return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'No se puede eliminar: la agencia tiene datos asociados' }, { status: 409 })
+  // Bloquear si tiene envíos — son datos críticos
+  const shipmentCount = await prisma.shipment.count({ where: { agencyId: params.id } })
+  if (shipmentCount > 0) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: la agencia tiene ${shipmentCount} envío(s) registrado(s)` },
+      { status: 409 }
+    )
   }
+
+  // Desvincular y desactivar usuarios ligados a esta agencia
+  const linkedUsers = await prisma.user.findMany({
+    where: { agencyId: params.id },
+    select: { id: true, supabaseId: true },
+  })
+
+  if (linkedUsers.length > 0) {
+    await prisma.user.updateMany({
+      where: { agencyId: params.id },
+      data: { agencyId: null, active: false, status: 'INACTIVE' },
+    })
+    // Banear en Supabase Auth también
+    const { supabaseAdmin } = await import('@/lib/supabase/admin')
+    await Promise.all(
+      linkedUsers
+        .filter(u => u.supabaseId)
+        .map(u => supabaseAdmin.auth.admin.updateUserById(u.supabaseId!, { ban_duration: '876600h' }))
+    )
+  }
+
+  // Eliminar clientes de la agencia
+  await prisma.client.deleteMany({ where: { agencyId: params.id } })
+
+  // Eliminar la agencia
+  await prisma.agency.delete({ where: { id: params.id } })
+
+  return NextResponse.json({ ok: true, usersDeactivated: linkedUsers.length })
 }
