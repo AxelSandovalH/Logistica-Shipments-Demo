@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const parsed = CreateSchema.safeParse(body)
   if (!parsed.success) {
-    const msg = parsed.error.errors[0]?.message ?? 'Datos inválidos'
+    const msg = parsed.error.issues[0]?.message ?? 'Datos inválidos'
     return NextResponse.json({ error: msg }, { status: 400 })
   }
 
