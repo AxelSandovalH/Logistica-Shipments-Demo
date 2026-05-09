@@ -28,8 +28,10 @@ export default function NewShipmentPage() {
   const [showClientPicker, setShowClientPicker] = useState(false)
   const [clients, setClients] = useState<any[]>([])
   const [clientSearch, setClientSearch] = useState('')
+  const [agencies, setAgencies] = useState<any[]>([])
 
   const [form, setForm] = useState({
+    agencyId: '',
     senderName: '', senderPhone: '', senderEmail: '',
     originStreet: '', originCity: '', originState: '', originZip: '',
     recipientName: '', recipientPhone: '', recipientEmail: '',
@@ -39,10 +41,18 @@ export default function NewShipmentPage() {
   })
 
   useEffect(() => {
+    // Cargar agencias — solo retorna si el usuario es ADMIN
+    fetch('/api/agencies')
+      .then(r => r.ok ? r.json() : { agencies: [] })
+      .then(d => setAgencies(d.agencies ?? []))
+  }, [])
+
+  useEffect(() => {
     if (!showClientPicker) return
-    fetch(`/api/clients${clientSearch ? `?search=${encodeURIComponent(clientSearch)}` : ''}`)
+    const agencyParam = form.agencyId ? `&agencyId=${form.agencyId}` : ''
+    fetch(`/api/clients${clientSearch ? `?search=${encodeURIComponent(clientSearch)}${agencyParam}` : form.agencyId ? `?agencyId=${form.agencyId}` : ''}`)
       .then(r => r.json()).then(d => setClients(d.clients ?? []))
-  }, [showClientPicker, clientSearch])
+  }, [showClientPicker, clientSearch, form.agencyId])
 
   const u = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
   const inp = (field: string, props?: any) => (
@@ -75,7 +85,7 @@ export default function NewShipmentPage() {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError('Error al crear el envío. Verifica los datos.'); return }
+    if (!res.ok) { setError(data.error ?? 'Error al crear el envío. Verifica los datos.'); return }
     setSuccess(data.shipment.guideNumber)
   }
 
@@ -122,6 +132,27 @@ export default function NewShipmentPage() {
 
       {/* Form */}
       <form id="shipment-form" onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 md:p-5 overflow-auto">
+
+        {/* Selector de agencia para ADMIN */}
+        {agencies.length > 0 && (
+          <div className="md:col-span-3 card !p-4 flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <div className="w-6 h-6 rounded-md bg-orange-100 flex items-center justify-center">
+                <Package className="w-3.5 h-3.5 text-orange-600" />
+              </div>
+              Agencia *
+            </div>
+            <select
+              className="input !py-1.5 !text-sm flex-1"
+              value={form.agencyId}
+              onChange={e => u('agencyId', e.target.value)}
+              required
+            >
+              <option value="">Seleccionar agencia...</option>
+              {agencies.map((a: any) => <option key={a.id} value={a.id}>{a.name} ({a.code})</option>)}
+            </select>
+          </div>
+        )}
 
         {/* Remitente */}
         <div className="card !p-4">
