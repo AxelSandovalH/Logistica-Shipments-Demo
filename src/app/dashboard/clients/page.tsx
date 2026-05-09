@@ -5,10 +5,11 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete'
 
 const STATES_US = ['California','Texas','Florida','New York','Arizona','Nevada','Illinois','Washington']
 
-const empty = { name: '', phone: '', email: '', street: '', city: '', state: '', zip: '', notes: '' }
+const empty = { name: '', phone: '', email: '', street: '', city: '', state: '', zip: '', notes: '', agencyId: '' }
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([])
+  const [agencies, setAgencies] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -30,7 +31,11 @@ export default function ClientsPage() {
     setLoading(false)
   }, [search])
 
-  useEffect(() => { fetchClients() }, [fetchClients])
+  useEffect(() => {
+    fetchClients()
+    // Cargar agencias (solo retorna datos si el usuario es ADMIN)
+    fetch('/api/agencies').then(r => r.ok ? r.json() : { agencies: [] }).then(d => setAgencies(d.agencies ?? []))
+  }, [fetchClients])
 
   function openNew() {
     setEditing(null)
@@ -44,7 +49,7 @@ export default function ClientsPage() {
     setForm({
       name: client.name ?? '', phone: client.phone ?? '', email: client.email ?? '',
       street: client.street ?? '', city: client.city ?? '', state: client.state ?? '',
-      zip: client.zip ?? '', notes: client.notes ?? '',
+      zip: client.zip ?? '', notes: client.notes ?? '', agencyId: client.agencyId ?? '',
     })
     setError('')
     setShowModal(true)
@@ -206,6 +211,16 @@ export default function ClientsPage() {
               </button>
             </div>
             <div className="p-6 space-y-3">
+              {/* Selector de agencia — solo visible para ADMIN */}
+              {agencies.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Agencia *</label>
+                  <select className="input !py-1.5 !text-sm" value={(form as any).agencyId} onChange={e => u('agencyId', e.target.value)} required>
+                    <option value="">Seleccionar agencia...</option>
+                    {agencies.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
                 {inp('name', { placeholder: 'Nombre completo', required: true })}

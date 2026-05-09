@@ -45,7 +45,11 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const agencyId = user.role === 'ADMIN' ? (body.agencyId ?? user.agencyId!) : user.agencyId!
+  const agencyId = user.role === 'ADMIN' ? body.agencyId : user.agencyId
+
+  if (!agencyId) {
+    return NextResponse.json({ error: 'Debes seleccionar una agencia' }, { status: 400 })
+  }
 
   const client = await prisma.client.create({
     data: { ...parsed.data, email: parsed.data.email || null, agencyId },
