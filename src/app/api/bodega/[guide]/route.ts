@@ -23,16 +23,23 @@ export async function GET(_req: NextRequest, { params }: { params: { guide: stri
       agency: true,
       origin: true,
       destination: true,
-      events: { orderBy: { createdAt: 'desc' }, take: 5 },
+      events: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: { warehouse: { select: { name: true, city: true } } },
+      },
     },
   })
 
   if (!shipment) return NextResponse.json({ error: 'Guía no encontrada' }, { status: 404 })
 
+  // Verificar si hay bodegas activas configuradas
+  const warehouseCount = await prisma.warehouse.count({ where: { active: true } })
+
   return NextResponse.json({
     shipment,
     nextStatuses: BODEGA_TRANSITIONS[shipment.status] ?? [],
-    requiresPin: !!shipment.agency?.warehousePin,
+    requiresPin: warehouseCount > 0,
     agencyId: shipment.agencyId,
   })
 }
@@ -42,16 +49,26 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
 
   const shipment = await prisma.shipment.findUnique({
     where: { guideNumber: params.guide },
-    include: { agency: true },
   })
 
   if (!shipment) return NextResponse.json({ error: 'Guía no encontrada' }, { status: 404 })
 
-  // Validar PIN si la agencia lo tiene configurado
-  if (shipment.agency?.warehousePin) {
-    if (!pin) return NextResponse.json({ error: 'PIN requerido', requiresPin: true }, { status: 401 })
-    if (pin !== shipment.agency.warehousePin) {
-      return NextResponse.json({ error: 'PIN incorrecto', requiresPin: true }, { status: 401 })
+  // Validar PIN y obtener bodega
+  let warehouseId: string | null = null
+  if (pin) {
+    const warehouse = await prisma.warehouse.findFirst({
+      where: { pin, active: true },
+      select: { id: true },
+    })
+    if (!warehouse) {
+      return NextResponse.json({ error: 'PIN de bodega incorrecto', requiresPin: true }, { status: 401 })
+    }
+    warehouseId = warehouse.id
+  } else {
+    // Verificar si hay bodegas activas — si las hay, el PIN es obligatorio
+    const warehouseCount = await prisma.warehouse.count({ where: { active: true } })
+    if (warehouseCount > 0) {
+      return NextResponse.json({ error: 'PIN de bodega requerido', requiresPin: true }, { status: 401 })
     }
   }
 
@@ -67,10 +84,11 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
     }),
     prisma.trackingEvent.create({
       data: {
-        shipmentId: shipment.id,
+        shipmentId:  shipment.id,
         status,
         description: description || DESCRIPTIONS[status],
-        location: location || null,
+        location:    location || null,
+        warehouseId: warehouseId,
       },
     }),
   ])

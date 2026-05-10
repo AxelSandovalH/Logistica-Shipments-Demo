@@ -4,12 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const Schema = z.object({
-  name: z.string().min(1).optional(),
-  code: z.string().min(2).max(10).toUpperCase().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
+  name:   z.string().min(1).optional(),
+  code:   z.string().min(2).max(10).toUpperCase().optional(),
+  email:  z.string().email().optional().or(z.literal('')),
+  phone:  z.string().optional(),
   active: z.boolean().optional(),
-  warehousePin: z.string().min(4).max(6).optional().or(z.literal('')),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -27,7 +26,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data: {
         ...parsed.data,
         email: parsed.data.email || null,
-        warehousePin: parsed.data.warehousePin === '' ? null : parsed.data.warehousePin,
       },
     })
     return NextResponse.json({ agency })

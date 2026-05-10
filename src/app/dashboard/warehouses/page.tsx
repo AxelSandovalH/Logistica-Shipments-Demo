@@ -1,36 +1,34 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Building2, Plus, Package, Users, Edit2, Trash2, X } from 'lucide-react'
+import { Warehouse, Plus, Edit2, Trash2, X, MapPin, Activity } from 'lucide-react'
 
-const empty = { name: '', code: '', email: '', phone: '' }
+const empty = { name: '', city: '', state: '', pin: '', notes: '' }
 
-export default function AgenciesPage() {
-  const [agencies, setAgencies] = useState<any[]>([])
+export default function WarehousesPage() {
+  const [warehouses, setWarehouses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Modal crear / editar
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState({ ...empty })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Modal confirmar eliminar
   const [deleting, setDeleting] = useState<any>(null)
   const [deleting2, setDeleting2] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  async function fetchAgencies() {
+  async function fetchWarehouses() {
     setLoading(true)
-    const res = await fetch('/api/agencies')
+    const res = await fetch('/api/warehouses')
     if (res.ok) {
       const data = await res.json()
-      setAgencies(data.agencies)
+      setWarehouses(data.warehouses)
     }
     setLoading(false)
   }
 
-  useEffect(() => { fetchAgencies() }, [])
+  useEffect(() => { fetchWarehouses() }, [])
 
   function openNew() {
     setEditing(null)
@@ -39,13 +37,14 @@ export default function AgenciesPage() {
     setShowModal(true)
   }
 
-  function openEdit(agency: any) {
-    setEditing(agency)
+  function openEdit(wh: any) {
+    setEditing(wh)
     setForm({
-      name:  agency.name ?? '',
-      code:  agency.code ?? '',
-      email: agency.email ?? '',
-      phone: agency.phone ?? '',
+      name:  wh.name ?? '',
+      city:  wh.city ?? '',
+      state: wh.state ?? '',
+      pin:   wh.pin ?? '',
+      notes: wh.notes ?? '',
     })
     setError('')
     setShowModal(true)
@@ -56,32 +55,31 @@ export default function AgenciesPage() {
     setSaving(true)
     setError('')
 
-    const payload = { ...form, code: form.code.toUpperCase() }
     const res = editing
-      ? await fetch(`/api/agencies/${editing.id}`, {
+      ? await fetch(`/api/warehouses/${editing.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(form),
         })
-      : await fetch('/api/agencies', {
+      : await fetch('/api/warehouses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(form),
         })
 
     const data = await res.json()
     setSaving(false)
 
     if (!res.ok) {
-      setError(typeof data.error === 'string' ? data.error : 'Error al guardar la agencia')
+      setError(typeof data.error === 'string' ? data.error : 'Error al guardar la bodega')
       return
     }
     setShowModal(false)
-    fetchAgencies()
+    fetchWarehouses()
   }
 
-  function openDelete(agency: any) {
-    setDeleting(agency)
+  function openDelete(wh: any) {
+    setDeleting(wh)
     setDeleteError('')
   }
 
@@ -89,7 +87,7 @@ export default function AgenciesPage() {
     if (!deleting) return
     setDeleting2(true)
     setDeleteError('')
-    const res = await fetch(`/api/agencies/${deleting.id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/warehouses/${deleting.id}`, { method: 'DELETE' })
     setDeleting2(false)
     if (!res.ok) {
       const data = await res.json()
@@ -97,7 +95,7 @@ export default function AgenciesPage() {
       return
     }
     setDeleting(null)
-    fetchAgencies()
+    fetchWarehouses()
   }
 
   const u = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
@@ -106,42 +104,51 @@ export default function AgenciesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agencias</h1>
-          <p className="text-sm text-gray-500">{agencies.length} agencias registradas</p>
+          <h1 className="text-2xl font-bold text-gray-900">Bodegas</h1>
+          <p className="text-sm text-gray-500">{warehouses.length} bodegas registradas</p>
         </div>
         <button className="btn-primary" onClick={openNew}>
           <Plus className="w-4 h-4" />
-          Nueva agencia
+          Nueva bodega
         </button>
       </div>
 
-      {/* Grid de agencias */}
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <p className="text-gray-400 col-span-3">Cargando...</p>
-        ) : agencies.map(a => (
-          <div key={a.id} className="card hover:shadow-md transition-shadow">
+        ) : warehouses.length === 0 ? (
+          <div className="col-span-3 text-center py-16 text-gray-400">
+            <Warehouse className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">Sin bodegas registradas</p>
+            <p className="text-sm mt-1">Crea la primera bodega para habilitar el acceso de bodega.</p>
+          </div>
+        ) : warehouses.map(wh => (
+          <div key={wh.id} className="card hover:shadow-md transition-shadow">
             <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 flex-shrink-0">
-                <Building2 className="w-5 h-5 text-blue-600" />
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 flex-shrink-0">
+                <Warehouse className="w-5 h-5 text-indigo-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{a.name}</p>
-                <p className="text-xs text-gray-500 font-mono">{a.code}</p>
+                <p className="font-semibold text-gray-900 truncate">{wh.name}</p>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <MapPin className="w-3 h-3" />
+                  <span>{wh.city}, {wh.state}</span>
+                </div>
               </div>
               <div className="flex items-center gap-1">
-                <span className={`badge ${a.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {a.active ? 'Activa' : 'Inactiva'}
+                <span className={`badge ${wh.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {wh.active ? 'Activa' : 'Inactiva'}
                 </span>
                 <button
-                  onClick={() => openEdit(a)}
+                  onClick={() => openEdit(wh)}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   title="Editar"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => openDelete(a)}
+                  onClick={() => openDelete(wh)}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   title="Eliminar"
                 >
@@ -149,17 +156,21 @@ export default function AgenciesPage() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 flex gap-4 text-sm text-gray-500">
+
+            <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
-                <Package className="w-3.5 h-3.5" />
-                <span>{a._count.shipments} envíos</span>
+                <Activity className="w-3.5 h-3.5" />
+                <span>{wh._count.events} movimientos</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" />
-                <span>{a._count.users} usuarios</span>
+              {/* PIN oculto — solo se muestra un placeholder */}
+              <div className="flex items-center gap-1 font-mono text-gray-300 tracking-widest text-xs">
+                {'●'.repeat(wh.pin?.length ?? 4)}
               </div>
             </div>
-            {a.email && <p className="text-xs text-gray-400 mt-2">{a.email}</p>}
+
+            {wh.notes && (
+              <p className="text-xs text-gray-400 mt-2 line-clamp-2">{wh.notes}</p>
+            )}
           </div>
         ))}
       </div>
@@ -170,7 +181,7 @@ export default function AgenciesPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-base font-bold text-gray-900">
-                {editing ? 'Editar agencia' : 'Nueva agencia'}
+                {editing ? 'Editar bodega' : 'Nueva bodega'}
               </h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
@@ -183,35 +194,54 @@ export default function AgenciesPage() {
                   className="input"
                   value={form.name}
                   onChange={e => u('name', e.target.value)}
+                  placeholder="Ej: Bodega LAX"
                   required
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Ciudad *</label>
+                  <input
+                    className="input"
+                    value={form.city}
+                    onChange={e => u('city', e.target.value)}
+                    placeholder="Ej: Los Ángeles"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Estado *</label>
+                  <input
+                    className="input"
+                    value={form.state}
+                    onChange={e => u('state', e.target.value)}
+                    placeholder="Ej: California"
+                    required
+                  />
+                </div>
+              </div>
               <div>
-                <label className="label">Código (ej: MNZX) *</label>
+                <label className="label">PIN de acceso *</label>
                 <input
-                  className="input uppercase"
-                  value={form.code}
-                  onChange={e => u('code', e.target.value.toUpperCase())}
-                  maxLength={10}
+                  className="input font-mono tracking-widest"
+                  placeholder="Mín. 4 dígitos numéricos"
+                  maxLength={8}
+                  value={form.pin}
+                  onChange={e => u('pin', e.target.value.replace(/\D/g, ''))}
                   required
                 />
-                <p className="text-xs text-gray-400 mt-1">Se usa para generar los números de guía</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  El personal lo ingresa al escanear cualquier QR de bodega. Debe ser único entre todas las bodegas.
+                </p>
               </div>
               <div>
-                <label className="label">Email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={form.email}
-                  onChange={e => u('email', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Teléfono</label>
-                <input
-                  className="input"
-                  value={form.phone}
-                  onChange={e => u('phone', e.target.value)}
+                <label className="label">Notas internas</label>
+                <textarea
+                  className="input resize-none"
+                  rows={2}
+                  placeholder="Dirección exacta, contacto, instrucciones... (solo visible para admins)"
+                  value={form.notes}
+                  onChange={e => u('notes', e.target.value)}
                 />
               </div>
               {editing && (
@@ -223,7 +253,7 @@ export default function AgenciesPage() {
                     onChange={e => setForm(f => ({ ...f, active: e.target.checked } as any))}
                     className="rounded border-gray-300 text-blue-600"
                   />
-                  <label htmlFor="active" className="text-sm text-gray-700">Agencia activa</label>
+                  <label htmlFor="active" className="text-sm text-gray-700">Bodega activa</label>
                 </div>
               )}
               {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}
@@ -232,7 +262,7 @@ export default function AgenciesPage() {
                   Cancelar
                 </button>
                 <button type="submit" className="btn-primary flex-1" disabled={saving}>
-                  {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear agencia'}
+                  {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear bodega'}
                 </button>
               </div>
             </form>
@@ -247,25 +277,19 @@ export default function AgenciesPage() {
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="text-base font-bold text-gray-900 text-center mb-1">¿Eliminar agencia?</h2>
+            <h2 className="text-base font-bold text-gray-900 text-center mb-1">¿Eliminar bodega?</h2>
             <p className="text-sm text-gray-500 text-center mb-3">
               <span className="font-semibold text-gray-700">{deleting.name}</span>
+              <span className="block text-xs text-gray-400">{deleting.city}, {deleting.state}</span>
             </p>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 space-y-1">
-              {deleting._count?.users > 0 && (
+            {deleting._count?.events > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <p className="text-xs text-amber-700">
-                  ⚠️ <span className="font-semibold">{deleting._count.users} usuario(s)</span> serán desactivados y desvinculados.
+                  ⚠️ Esta bodega tiene <span className="font-semibold">{deleting._count.events} movimiento(s)</span> registrados.
+                  Se eliminarán las referencias pero los eventos de tracking se conservan.
                 </p>
-              )}
-              {deleting._count?.shipments > 0 && (
-                <p className="text-xs text-red-600">
-                  🚫 Tiene <span className="font-semibold">{deleting._count.shipments} envío(s)</span> — no se puede eliminar.
-                </p>
-              )}
-              {deleting._count?.users === 0 && deleting._count?.shipments === 0 && (
-                <p className="text-xs text-gray-500">Sin datos asociados. La eliminación es segura.</p>
-              )}
-            </div>
+              </div>
+            )}
             {deleteError && (
               <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2 mb-3 text-center">{deleteError}</p>
             )}

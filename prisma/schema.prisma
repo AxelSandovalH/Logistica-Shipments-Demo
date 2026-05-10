@@ -13,14 +13,27 @@ model Agency {
   code      String   @unique
   email     String?
   phone     String?
-  active        Boolean  @default(true)
-  warehousePin  String?  // PIN de acceso para interfaz de bodega
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   users     User[]
   shipments Shipment[]
   clients   Client[]
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  state     String
+  pin       String   @unique  // PIN numérico para identificar la bodega al escanear
+  active    Boolean  @default(true)
+  notes     String?           // Notas internas (solo admin)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events    TrackingEvent[]
 }
 
 model User {
@@ -127,5 +140,8 @@ model TrackingEvent {
   shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
   createdById String?
-  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+  createdBy   User?      @relation("CreatedBy", fields: [createdById], references: [id])
+
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 }

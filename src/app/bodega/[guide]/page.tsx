@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Package, Truck, MapPin, CheckCircle, AlertCircle, RotateCcw, ArrowRight, Loader2, Lock, Delete } from 'lucide-react'
+import { Package, Truck, MapPin, CheckCircle, AlertCircle, RotateCcw, ArrowRight, Loader2, Lock, Delete, Warehouse } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED:         'Recibido en bodega',
@@ -40,6 +40,16 @@ const NEXT_COLORS: Record<string, string> = {
   RETURNED:         'bg-gray-500 hover:bg-gray-600',
 }
 
+const SESSION_KEY = 'bodega_warehouse'
+
+interface WarehouseInfo {
+  id: string
+  name: string
+  city: string
+  state: string
+  pin: string
+}
+
 export default function BodegaPage() {
   const { guide } = useParams()
   const [data, setData] = useState<any>(null)
@@ -49,9 +59,9 @@ export default function BodegaPage() {
   const [error, setError] = useState('')
   const [location, setLocation] = useState('')
 
-  // PIN
+  // Warehouse session
   const [requiresPin, setRequiresPin] = useState(false)
-  const [pinUnlocked, setPinUnlocked] = useState(false)
+  const [warehouse, setWarehouse] = useState<WarehouseInfo | null>(null)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
   const [pinChecking, setPinChecking] = useState(false)
@@ -63,29 +73,29 @@ export default function BodegaPage() {
     setData(d)
     setRequiresPin(d.requiresPin)
 
-    // Revisar si ya tiene el PIN validado en esta sesión
     if (d.requiresPin) {
-      const saved = sessionStorage.getItem(`bodega_pin_${d.agencyId}`)
-      if (saved) setPinUnlocked(true)
+      // Recuperar bodega de sessionStorage si ya está autenticada
+      const saved = sessionStorage.getItem(SESSION_KEY)
+      if (saved) {
+        try { setWarehouse(JSON.parse(saved)) } catch { sessionStorage.removeItem(SESSION_KEY) }
+      }
     }
     setLoading(false)
   }
 
   useEffect(() => { fetchShipment() }, [guide])
 
-  // Teclado numérico del PIN
   function pressKey(k: string) {
-    if (pinInput.length >= 6) return
+    if (pinInput.length >= 8) return
     setPinInput(p => p + k)
     setPinError('')
   }
   function deleteLast() { setPinInput(p => p.slice(0, -1)) }
 
   async function verifyPin() {
-    if (!pinInput) return
+    if (!pinInput || pinInput.length < 4) return
     setPinChecking(true)
     setPinError('')
-    // Verificamos el PIN haciendo un POST dummy con el PIN pero sin cambiar estado
     const res = await fetch(`/api/bodega/${guide}/verify-pin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -93,8 +103,10 @@ export default function BodegaPage() {
     })
     setPinChecking(false)
     if (res.ok) {
-      sessionStorage.setItem(`bodega_pin_${data.agencyId}`, pinInput)
-      setPinUnlocked(true)
+      const { warehouse: wh } = await res.json()
+      const info: WarehouseInfo = { ...wh, pin: pinInput }
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(info))
+      setWarehouse(info)
     } else {
       setPinError('PIN incorrecto')
       setPinInput('')
@@ -104,7 +116,7 @@ export default function BodegaPage() {
   async function handleUpdate(status: string) {
     setSaving(true)
     setError('')
-    const pin = sessionStorage.getItem(`bodega_pin_${data.agencyId}`) || undefined
+    const pin = warehouse?.pin
     const res = await fetch(`/api/bodega/${guide}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -113,12 +125,22 @@ export default function BodegaPage() {
     setSaving(false)
     if (!res.ok) {
       const d = await res.json()
-      if (d.requiresPin) { setPinUnlocked(false); sessionStorage.removeItem(`bodega_pin_${data.agencyId}`) }
+      if (d.requiresPin) {
+        // PIN invalidado (bodega desactivada)
+        setWarehouse(null)
+        sessionStorage.removeItem(SESSION_KEY)
+      }
       setError(d.error ?? 'Error al actualizar')
       return
     }
     setDone(status)
     fetchShipment()
+  }
+
+  function logout() {
+    sessionStorage.removeItem(SESSION_KEY)
+    setWarehouse(null)
+    setPinInput('')
   }
 
   // ── Loading ──────────────────────────────────────────
@@ -142,26 +164,23 @@ export default function BodegaPage() {
   const StatusIcon = STATUS_ICONS[shipment.status] ?? Package
 
   // ── Pantalla de PIN ──────────────────────────────────
-  if (requiresPin && !pinUnlocked) return (
+  if (requiresPin && !warehouse) return (
     <div className="min-h-screen bg-blue-900 flex flex-col items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 mx-auto mb-3">
             <Lock className="w-7 h-7 text-blue-600" />
           </div>
           <p className="font-bold text-gray-900 text-lg">Acceso de Bodega</p>
-          <p className="text-sm text-gray-500 mt-1">Ingresa el PIN de tu agencia</p>
+          <p className="text-sm text-gray-500 mt-1">Ingresa el PIN de tu bodega</p>
           <p className="font-mono text-xs text-gray-400 mt-1">{shipment.guideNumber}</p>
         </div>
 
         {/* Indicador de dígitos */}
-        <div className="flex justify-center gap-3 mb-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
-              i < pinInput.length
-                ? 'bg-blue-600 border-blue-600'
-                : 'border-gray-300'
+        <div className="flex justify-center gap-2 mb-6">
+          {Array.from({ length: Math.max(pinInput.length, 4) }).map((_, i) => (
+            <div key={i} className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+              i < pinInput.length ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
             }`} />
           ))}
         </div>
@@ -212,6 +231,12 @@ export default function BodegaPage() {
         <p className="text-xs text-blue-300 uppercase tracking-wide">HurryOps · Bodega</p>
         <p className="font-mono text-xl font-bold mt-0.5">{shipment.guideNumber}</p>
         <p className="text-xs text-blue-300 mt-0.5">{shipment.agency?.name}</p>
+        {warehouse && (
+          <div className="flex items-center gap-1 mt-1.5">
+            <Warehouse className="w-3 h-3 text-blue-400" />
+            <p className="text-xs text-blue-400">{warehouse.name} — {warehouse.city}</p>
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-4 max-w-lg mx-auto">
@@ -262,6 +287,9 @@ export default function BodegaPage() {
                   <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${i === 0 ? 'bg-blue-500' : 'bg-gray-300'}`} />
                   <div>
                     <p className={i === 0 ? 'font-medium' : ''}>{STATUS_LABELS[e.status] ?? e.status}</p>
+                    {e.warehouse && (
+                      <p className="text-xs text-blue-500">{e.warehouse.city}</p>
+                    )}
                     <p className="text-xs">{e.description}</p>
                   </div>
                 </div>
@@ -299,10 +327,10 @@ export default function BodegaPage() {
           </div>
         )}
 
-        {/* Cerrar sesión de PIN */}
-        {requiresPin && (
+        {/* Cerrar sesión de bodega */}
+        {requiresPin && warehouse && (
           <button
-            onClick={() => { sessionStorage.removeItem(`bodega_pin_${data.agencyId}`); setPinUnlocked(false); setPinInput('') }}
+            onClick={logout}
             className="w-full text-xs text-gray-400 py-2 hover:text-gray-600 transition-colors"
           >
             Cerrar sesión de bodega

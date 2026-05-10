@@ -5,9 +5,10 @@ import { z } from 'zod'
 
 const Schema = z.object({
   name:  z.string().min(1),
-  code:  z.string().min(2).max(10).toUpperCase(),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
+  city:  z.string().min(1),
+  state: z.string().min(1),
+  pin:   z.string().min(4).max(8).regex(/^\d+$/, 'El PIN solo puede contener números'),
+  notes: z.string().optional(),
 })
 
 export async function GET() {
@@ -15,11 +16,11 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
-  const agencies = await prisma.agency.findMany({
+  const warehouses = await prisma.warehouse.findMany({
     orderBy: { name: 'asc' },
-    include: { _count: { select: { shipments: true, users: true } } },
+    include: { _count: { select: { events: true } } },
   })
-  return NextResponse.json({ agencies })
+  return NextResponse.json({ warehouses })
 }
 
 export async function POST(req: NextRequest) {
@@ -31,8 +32,10 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const agency = await prisma.agency.create({
-    data: parsed.data,
-  })
-  return NextResponse.json({ agency }, { status: 201 })
+  try {
+    const warehouse = await prisma.warehouse.create({ data: parsed.data })
+    return NextResponse.json({ warehouse }, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'El PIN ya está en uso por otra bodega' }, { status: 400 })
+  }
 }
