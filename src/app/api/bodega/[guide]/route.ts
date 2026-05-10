@@ -12,9 +12,9 @@ const DESCRIPTIONS: Record<string, string> = {
 }
 
 const BODEGA_TRANSITIONS: Record<string, string[]> = {
-  RECEIVED:   ['IN_TRANSIT'],
-  IN_TRANSIT: ['OUT_FOR_DELIVERY', 'RECEIVED'],
-  FAILED:     ['IN_TRANSIT', 'RETURNED'],
+  RECEIVED:         ['OUT_FOR_DELIVERY'],
+  OUT_FOR_DELIVERY: ['RECEIVED'],
+  FAILED:           ['OUT_FOR_DELIVERY', 'RETURNED'],
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { guide: string } }) {

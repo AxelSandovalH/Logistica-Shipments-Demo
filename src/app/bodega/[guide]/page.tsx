@@ -27,14 +27,12 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const NEXT_LABELS: Record<string, string> = {
-  IN_TRANSIT:       'Despachar — En tránsito',
-  OUT_FOR_DELIVERY: 'Entregar a chofer — En ruta',
+  OUT_FOR_DELIVERY: 'Entregar a chofer',
   RECEIVED:         'Regresar a bodega',
   RETURNED:         'Marcar como devuelto',
 }
 
 const NEXT_COLORS: Record<string, string> = {
-  IN_TRANSIT:       'bg-yellow-500 hover:bg-yellow-600',
   OUT_FOR_DELIVERY: 'bg-orange-500 hover:bg-orange-600',
   RECEIVED:         'bg-blue-500 hover:bg-blue-600',
   RETURNED:         'bg-gray-500 hover:bg-gray-600',
