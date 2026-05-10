@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Package, User, Clock, CheckCircle, TruckIcon, AlertCircle, RotateCcw, ExternalLink } from 'lucide-react'
+import { ArrowLeft, MapPin, Package, User, Clock, CheckCircle, TruckIcon, AlertCircle, RotateCcw, ExternalLink, Printer } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES, SERVICE_TYPES } from '@/lib/utils'
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
@@ -86,6 +86,14 @@ export default function ShipmentDetailPage() {
           >
             <ExternalLink className="w-3 h-3" />
             Tracking público
+          </a>
+          <a
+            href={`/dashboard/shipments/${shipment.id}/print`}
+            target="_blank"
+            className="btn-secondary text-xs"
+          >
+            <Printer className="w-3 h-3" />
+            Imprimir guía
           </a>
           {nextStatuses.length > 0 && (
             <button className="btn-primary" onClick={() => setShowStatusModal(true)}>
