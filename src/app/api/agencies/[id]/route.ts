@@ -9,6 +9,7 @@ const Schema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   active: z.boolean().optional(),
+  warehousePin: z.string().min(4).max(6).optional().or(z.literal('')),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -23,7 +24,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     const agency = await prisma.agency.update({
       where: { id: params.id },
-      data: { ...parsed.data, email: parsed.data.email || null },
+      data: {
+        ...parsed.data,
+        email: parsed.data.email || null,
+        warehousePin: parsed.data.warehousePin === '' ? null : parsed.data.warehousePin,
+      },
     })
     return NextResponse.json({ agency })
   } catch {

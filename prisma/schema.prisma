@@ -13,7 +13,8 @@ model Agency {
   code      String   @unique
   email     String?
   phone     String?
-  active    Boolean  @default(true)
+  active        Boolean  @default(true)
+  warehousePin  String?  // PIN de acceso para interfaz de bodega
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -8,6 +8,7 @@ const Schema = z.object({
   code: z.string().min(2).max(10).toUpperCase(),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
+  warehousePin: z.string().min(4).max(6).optional().or(z.literal('')),
 })
 
 export async function GET() {
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const agency = await prisma.agency.create({ data: parsed.data })
+  const agency = await prisma.agency.create({
+    data: { ...parsed.data, warehousePin: parsed.data.warehousePin || null },
+  })
   return NextResponse.json({ agency }, { status: 201 })
 }

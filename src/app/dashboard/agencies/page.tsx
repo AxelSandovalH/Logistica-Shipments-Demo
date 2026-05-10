@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Building2, Plus, Package, Users, Edit2, Trash2, X } from 'lucide-react'
 
-const empty = { name: '', code: '', email: '', phone: '' }
+const empty = { name: '', code: '', email: '', phone: '', warehousePin: '' }
 
 export default function AgenciesPage() {
   const [agencies, setAgencies] = useState<any[]>([])
@@ -46,6 +46,7 @@ export default function AgenciesPage() {
       code: agency.code ?? '',
       email: agency.email ?? '',
       phone: agency.phone ?? '',
+      warehousePin: agency.warehousePin ?? '',
     })
     setError('')
     setShowModal(true)
@@ -213,6 +214,17 @@ export default function AgenciesPage() {
                   value={form.phone}
                   onChange={e => u('phone', e.target.value)}
                 />
+              </div>
+              <div>
+                <label className="label">PIN de bodega</label>
+                <input
+                  className="input font-mono tracking-widest"
+                  placeholder="Ej: 1234 (mín. 4 dígitos)"
+                  maxLength={6}
+                  value={(form as any).warehousePin}
+                  onChange={e => u('warehousePin', e.target.value.replace(/\D/g, ''))}
+                />
+                <p className="text-xs text-gray-400 mt-1">El staff lo ingresa al escanear el QR de bodega. Déjalo vacío para no requerir PIN.</p>
               </div>
               {editing && (
                 <div className="flex items-center gap-2">
