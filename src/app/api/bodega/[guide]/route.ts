@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendStatusUpdateEmail } from '@/lib/email'
 
 const DESCRIPTIONS: Record<string, string> = {
   RECEIVED:         'Paquete recibido en bodega',
@@ -49,23 +50,25 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
 
   const shipment = await prisma.shipment.findUnique({
     where: { guideNumber: params.guide },
+    include: { agency: true, destination: true },
   })
 
   if (!shipment) return NextResponse.json({ error: 'Guía no encontrada' }, { status: 404 })
 
   // Validar PIN y obtener bodega
   let warehouseId: string | null = null
+  let warehouseCity: string | null = null
   if (pin) {
     const warehouse = await prisma.warehouse.findFirst({
       where: { pin, active: true },
-      select: { id: true },
+      select: { id: true, city: true },
     })
     if (!warehouse) {
       return NextResponse.json({ error: 'PIN de bodega incorrecto', requiresPin: true }, { status: 401 })
     }
     warehouseId = warehouse.id
+    warehouseCity = warehouse.city
   } else {
-    // Verificar si hay bodegas activas — si las hay, el PIN es obligatorio
     const warehouseCount = await prisma.warehouse.count({ where: { active: true } })
     if (warehouseCount > 0) {
       return NextResponse.json({ error: 'PIN de bodega requerido', requiresPin: true }, { status: 401 })
@@ -92,6 +95,20 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
       },
     }),
   ])
+
+  // Enviar correo al destinatario si tiene email
+  const emailTarget = shipment.recipientEmail || shipment.senderEmail
+  if (emailTarget) {
+    sendStatusUpdateEmail({
+      to:            emailTarget,
+      guideNumber:   shipment.guideNumber,
+      recipientName: shipment.recipientName,
+      status,
+      agencyName:    shipment.agency?.name ?? 'HurryOps',
+      warehouseCity,
+      location:      location || null,
+    }).catch(err => console.error('[email] status update:', err))
+  }
 
   return NextResponse.json({ ok: true, status })
 }

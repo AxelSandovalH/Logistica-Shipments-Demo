@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/supabase/get-user'
 import { prisma } from '@/lib/prisma'
 import { generateGuideNumber } from '@/lib/utils'
+import { sendGuideCreatedEmail } from '@/lib/email'
 import { z } from 'zod'
 
 const CreateShipmentSchema = z.object({
@@ -74,6 +75,24 @@ export async function POST(req: NextRequest) {
   await prisma.trackingEvent.create({
     data: { shipmentId: shipment.id, status: 'RECEIVED', description: 'Paquete recibido en bodega', createdById: user.id },
   })
+
+  // Enviar correo al remitente si tiene email
+  if (data.senderEmail) {
+    sendGuideCreatedEmail({
+      to:            data.senderEmail,
+      guideNumber:   shipment.guideNumber,
+      senderName:    data.senderName,
+      recipientName: data.recipientName,
+      recipientPhone: data.recipientPhone,
+      destCity:      data.destCity,
+      destState:     data.destState,
+      agencyName:    agency.name,
+      weight:        data.weight,
+      pieces:        data.pieces,
+      description:   data.description,
+      serviceType:   data.serviceType,
+    }).catch(err => console.error('[email] guía creada:', err))
+  }
 
   return NextResponse.json({ shipment }, { status: 201 })
 }
