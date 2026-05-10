@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, X, ShieldCheck, Building2, Truck, Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react'
+import { Plus, Edit2, X, ShieldCheck, Building2, Truck, Clock, CheckCircle, XCircle, Trash2, Loader2 } from 'lucide-react'
 
 const ROLES = { ADMIN: 'Administrador', AGENCY: 'Agencia', DRIVER: 'Chofer' }
 const ROLE_COLORS: Record<string, string> = {
@@ -39,6 +39,9 @@ export default function UsersPage() {
   // Modal rechazar
   const [rejecting, setRejecting] = useState<any>(null)
   const [rejectSaving, setRejectSaving] = useState(false)
+
+  // Toggle activo/inactivo
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   async function fetchData() {
     const [uRes, aRes] = await Promise.all([fetch('/api/users'), fetch('/api/agencies')])
@@ -95,11 +98,14 @@ export default function UsersPage() {
 
   // ── Activar / Desactivar ────────────────────────────────────
   async function toggleActive(u: any) {
+    if (togglingId) return
+    setTogglingId(u.id)
     await fetch(`/api/users/${u.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !u.active }),
     })
-    fetchData()
+    await fetchData()
+    setTogglingId(null)
   }
 
   // ── Aprobar ─────────────────────────────────────────────────
@@ -240,9 +246,13 @@ export default function UsersPage() {
                         </button>
                         <button
                           onClick={() => toggleActive(u)}
-                          className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${u.active ? 'text-gray-500 hover:text-red-600 hover:bg-red-50' : 'text-gray-500 hover:text-green-600 hover:bg-green-50'}`}
+                          disabled={togglingId === u.id}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${u.active ? 'text-gray-500 hover:text-red-600 hover:bg-red-50' : 'text-gray-500 hover:text-green-600 hover:bg-green-50'}`}
                         >
-                          {u.active ? 'Desactivar' : 'Activar'}
+                          {togglingId === u.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : u.active ? 'Desactivar' : 'Activar'
+                          }
                         </button>
                       </div>
                     </td>
