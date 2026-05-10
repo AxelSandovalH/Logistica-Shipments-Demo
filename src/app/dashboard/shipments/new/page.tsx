@@ -35,6 +35,7 @@ export default function NewShipmentPage() {
     senderName: '', senderPhone: '', senderEmail: '',
     originStreet: '', originCity: '', originState: '', originZip: '',
     recipientName: '', recipientPhone: '', recipientEmail: '',
+    notifyRecipient: false,
     destStreet: '', destColonia: '', destCity: '', destState: '', destZip: '', destReferences: '',
     weight: '', packageType: 'PACKAGE', description: '', pieces: '1',
     declaredValue: '', serviceType: 'STANDARD', notes: '',
@@ -209,6 +210,21 @@ export default function NewShipmentPage() {
             <F label="Nombre *" span={2}>{inp('recipientName', { required: true })}</F>
             <F label="Teléfono">{inp('recipientPhone', { type: 'tel' })}</F>
             <F label="Email">{inp('recipientEmail', { type: 'email' })}</F>
+            <div className="col-span-2 flex items-center gap-2 py-0.5">
+              <input
+                type="checkbox"
+                id="notifyRecipient"
+                checked={form.notifyRecipient}
+                onChange={e => setForm(f => ({ ...f, notifyRecipient: e.target.checked }))}
+                className="rounded border-gray-300 text-blue-600 w-4 h-4 cursor-pointer"
+              />
+              <label htmlFor="notifyRecipient" className="text-xs text-gray-600 cursor-pointer select-none">
+                Notificar al destinatario por email
+              </label>
+              {!form.notifyRecipient && (
+                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Es un regalo 🎁</span>
+              )}
+            </div>
             <F label="Calle y número" span={2}>
               <AddressAutocomplete
                 country="mx"

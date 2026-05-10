@@ -12,6 +12,7 @@ const CreateShipmentSchema = z.object({
   recipientName: z.string().min(1),
   recipientPhone: z.string().optional(),
   recipientEmail: z.string().email().optional().or(z.literal('')),
+  notifyRecipient: z.boolean().default(false),
   weight: z.coerce.number().positive().optional(),
   packageType: z.enum(['PACKAGE', 'ENVELOPE', 'PALLET']).default('PACKAGE'),
   description: z.string().optional(),
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
       recipientName: data.recipientName, recipientPhone: data.recipientPhone, recipientEmail: data.recipientEmail || null,
       weight: data.weight, packageType: data.packageType, description: data.description,
       pieces: data.pieces, declaredValue: data.declaredValue, serviceType: data.serviceType, notes: data.notes,
+      notifyRecipient: data.notifyRecipient,
       agencyId, createdById: user.id,
       originId: origin?.id, destinationId: destination.id,
     },
@@ -76,22 +78,40 @@ export async function POST(req: NextRequest) {
     data: { shipmentId: shipment.id, status: 'RECEIVED', description: 'Paquete recibido en bodega', createdById: user.id },
   })
 
-  // Enviar correo al remitente si tiene email
+  // Correo al remitente siempre (si tiene email)
   if (data.senderEmail) {
     sendGuideCreatedEmail({
-      to:            data.senderEmail,
-      guideNumber:   shipment.guideNumber,
-      senderName:    data.senderName,
-      recipientName: data.recipientName,
+      to:             data.senderEmail,
+      guideNumber:    shipment.guideNumber,
+      senderName:     data.senderName,
+      recipientName:  data.recipientName,
       recipientPhone: data.recipientPhone,
-      destCity:      data.destCity,
-      destState:     data.destState,
-      agencyName:    agency.name,
-      weight:        data.weight,
-      pieces:        data.pieces,
-      description:   data.description,
-      serviceType:   data.serviceType,
-    }).catch(err => console.error('[email] guía creada:', err))
+      destCity:       data.destCity,
+      destState:      data.destState,
+      agencyName:     agency.name,
+      weight:         data.weight,
+      pieces:         data.pieces,
+      description:    data.description,
+      serviceType:    data.serviceType,
+    }).catch(err => console.error('[email] guía creada (remitente):', err))
+  }
+
+  // Correo al destinatario solo si se solicitó y tiene email
+  if (data.notifyRecipient && data.recipientEmail && data.recipientEmail !== data.senderEmail) {
+    sendGuideCreatedEmail({
+      to:             data.recipientEmail,
+      guideNumber:    shipment.guideNumber,
+      senderName:     data.senderName,
+      recipientName:  data.recipientName,
+      recipientPhone: data.recipientPhone,
+      destCity:       data.destCity,
+      destState:      data.destState,
+      agencyName:     agency.name,
+      weight:         data.weight,
+      pieces:         data.pieces,
+      description:    data.description,
+      serviceType:    data.serviceType,
+    }).catch(err => console.error('[email] guía creada (destinatario):', err))
   }
 
   return NextResponse.json({ shipment }, { status: 201 })

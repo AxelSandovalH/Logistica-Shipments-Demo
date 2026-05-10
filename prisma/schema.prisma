@@ -89,8 +89,9 @@ model Shipment {
   pieces        Int     @default(1)
   declaredValue Float?
 
-  serviceType  String   @default("STANDARD")
-  notes        String?
+  serviceType      String   @default("STANDARD")
+  notes            String?
+  notifyRecipient  Boolean  @default(false)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

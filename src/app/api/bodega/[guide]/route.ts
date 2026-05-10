@@ -96,18 +96,30 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
     }),
   ])
 
-  // Enviar correo al destinatario si tiene email
-  const emailTarget = shipment.recipientEmail || shipment.senderEmail
-  if (emailTarget) {
+  // Correo al remitente siempre (si tiene email)
+  if (shipment.senderEmail) {
     sendStatusUpdateEmail({
-      to:            emailTarget,
+      to:            shipment.senderEmail,
       guideNumber:   shipment.guideNumber,
       recipientName: shipment.recipientName,
       status,
       agencyName:    shipment.agency?.name ?? 'HurryOps',
       warehouseCity,
       location:      location || null,
-    }).catch(err => console.error('[email] status update:', err))
+    }).catch(err => console.error('[email] status update (remitente):', err))
+  }
+
+  // Correo al destinatario solo si fue autorizado al crear la guía
+  if (shipment.notifyRecipient && shipment.recipientEmail && shipment.recipientEmail !== shipment.senderEmail) {
+    sendStatusUpdateEmail({
+      to:            shipment.recipientEmail,
+      guideNumber:   shipment.guideNumber,
+      recipientName: shipment.recipientName,
+      status,
+      agencyName:    shipment.agency?.name ?? 'HurryOps',
+      warehouseCity,
+      location:      location || null,
+    }).catch(err => console.error('[email] status update (destinatario):', err))
   }
 
   return NextResponse.json({ ok: true, status })
