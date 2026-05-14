@@ -5,11 +5,12 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const PatchSchema = z.object({
-  name: z.string().min(1).optional(),
-  role: z.enum(['ADMIN', 'AGENCY', 'DRIVER']).optional(),
-  agencyId: z.string().nullable().optional(),
-  active: z.boolean().optional(),
-  status: z.enum(['PENDING', 'ACTIVE', 'INACTIVE']).optional(),
+  name:          z.string().min(1).optional(),
+  role:          z.enum(['ADMIN', 'AGENCY', 'DRIVER']).optional(),
+  agencyId:      z.string().nullable().optional(),
+  active:        z.boolean().optional(),
+  status:        z.enum(['PENDING', 'ACTIVE', 'INACTIVE']).optional(),
+  whatsappPhone: z.string().nullable().optional(),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -47,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...('agencyId' in parsed.data && { agencyId: parsed.data.agencyId }),
       ...(typeof effectiveActive === 'boolean' && { active: effectiveActive }),
       ...(parsed.data.status && { status: parsed.data.status }),
+      ...('whatsappPhone' in parsed.data && { whatsappPhone: parsed.data.whatsappPhone || null }),
     },
     include: { agency: true },
   })

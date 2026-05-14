@@ -37,15 +37,16 @@ model Warehouse {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  supabaseId String?  @unique
-  email      String   @unique
-  name       String
-  role       String   @default("AGENCY")
-  status     String   @default("ACTIVE")   // PENDING | ACTIVE | INACTIVE
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  supabaseId     String?  @unique
+  email          String   @unique
+  name           String
+  role           String   @default("AGENCY")
+  status         String   @default("ACTIVE")   // PENDING | ACTIVE | INACTIVE
+  active         Boolean  @default(true)
+  whatsappPhone  String?  @unique              // Número vinculado al agente WA
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   agencyId   String?
   agency     Agency?  @relation(fields: [agencyId], references: [id])
@@ -128,6 +129,13 @@ model Client {
 
   agencyId  String
   agency    Agency   @relation(fields: [agencyId], references: [id])
+}
+
+model WhatsappSession {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  messages  Json     @default("[]")
+  updatedAt DateTime @updatedAt
 }
 
 model TrackingEvent {

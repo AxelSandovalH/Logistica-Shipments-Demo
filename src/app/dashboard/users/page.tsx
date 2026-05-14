@@ -27,7 +27,7 @@ export default function UsersPage() {
 
   // Modal editar
   const [editing, setEditing] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ name: '', role: 'AGENCY', agencyId: '' })
+  const [editForm, setEditForm] = useState({ name: '', role: 'AGENCY', agencyId: '', whatsappPhone: '' })
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -79,7 +79,7 @@ export default function UsersPage() {
   // ── Editar ──────────────────────────────────────────────────
   function openEdit(u: any) {
     setEditing(u)
-    setEditForm({ name: u.name, role: u.role, agencyId: u.agencyId ?? '' })
+    setEditForm({ name: u.name, role: u.role, agencyId: u.agencyId ?? '', whatsappPhone: u.whatsappPhone ?? '' })
     setEditError('')
   }
 
@@ -88,7 +88,7 @@ export default function UsersPage() {
     setSaving(true); setEditError('')
     const res = await fetch(`/api/users/${editing.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editForm, agencyId: editForm.agencyId || null }),
+      body: JSON.stringify({ ...editForm, agencyId: editForm.agencyId || null, whatsappPhone: editForm.whatsappPhone || null }),
     })
     const data = await res.json()
     setSaving(false)
@@ -334,6 +334,16 @@ export default function UsersPage() {
                   </select>
                 </div>
               )}
+              <div>
+                <label className="label">WhatsApp</label>
+                <input
+                  className="input"
+                  placeholder="Ej: 526671234567 (con código de país, sin +)"
+                  value={editForm.whatsappPhone}
+                  onChange={e => ue('whatsappPhone', e.target.value.replace(/\D/g, ''))}
+                />
+                <p className="text-xs text-gray-400 mt-1">Vincular permite usar el agente de WhatsApp con esta cuenta.</p>
+              </div>
               {editError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{editError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" className="btn-secondary flex-1" onClick={() => setEditing(null)}>Cancelar</button>
