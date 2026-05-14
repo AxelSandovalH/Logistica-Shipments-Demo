@@ -84,7 +84,7 @@ interface GuideEmailParams {
 }
 
 export async function sendGuideCreatedEmail(p: GuideEmailParams) {
-  const trackingUrl = `${BASE_URL}/tracking/${p.guideNumber}`
+  const trackingUrl = `${BASE_URL}/track/${p.guideNumber}`
 
   const serviceLabels: Record<string, string> = {
     STANDARD: 'Estándar',
@@ -170,7 +170,7 @@ interface StatusEmailParams {
 }
 
 export async function sendStatusUpdateEmail(p: StatusEmailParams) {
-  const trackingUrl = `${BASE_URL}/tracking/${p.guideNumber}`
+  const trackingUrl = `${BASE_URL}/track/${p.guideNumber}`
   const label = STATUS_LABELS[p.status] ?? p.status
   const color = STATUS_COLORS[p.status] ?? '#1e3a5f'
 

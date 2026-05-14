@@ -185,7 +185,7 @@ async function runTool(
       },
     })
 
-    return `✅ *Guía creada*\n\n📦 *${guideNumber}*\nAgencia: ${agency.name}\nRemitente: ${input.senderName}\nDestinatario: ${input.recipientName}\nDestino: ${input.destCity}, ${input.destState}\nServicio: ${input.serviceType ?? 'STANDARD'}\n\n🔗 Tracking: https://hurryops.app/tracking/${guideNumber}`
+    return `✅ *Guía creada*\n\n📦 *${guideNumber}*\nAgencia: ${agency.name}\nRemitente: ${input.senderName}\nDestinatario: ${input.recipientName}\nDestino: ${input.destCity}, ${input.destState}\nServicio: ${input.serviceType ?? 'STANDARD'}\n\n🔗 Rastreo: https://hurryops.app/track/${guideNumber}\n🖨️ Imprimir guía: https://hurryops.app/print/${guideNumber}`
   }
 
   if (name === 'buscar_cliente') {
