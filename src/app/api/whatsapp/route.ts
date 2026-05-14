@@ -6,9 +6,23 @@ import { generateGuideNumber } from '@/lib/utils'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// ── Herramientas que Claude puede usar ───────────────────────────────────────
+const STATUS_ES: Record<string, string> = {
+  RECEIVED:         'Recibido en bodega',
+  IN_TRANSIT:       'En tránsito',
+  OUT_FOR_DELIVERY: 'En ruta de entrega',
+  DELIVERED:        'Entregado ✓',
+  FAILED:           'Intento fallido',
+  RETURNED:         'Devuelto',
+}
+
+// ── Herramientas ──────────────────────────────────────────────────────────────
 
 const tools: Anthropic.Tool[] = [
+  {
+    name: 'listar_agencias',
+    description: 'Lista las agencias disponibles. Úsalo cuando el admin necesite crear una guía y no tenga agencia asignada.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
   {
     name: 'consultar_envio',
     description: 'Busca un envío por número de guía o nombre del destinatario/remitente.',
@@ -22,20 +36,22 @@ const tools: Anthropic.Tool[] = [
   },
   {
     name: 'listar_envios',
-    description: 'Lista los envíos recientes de la agencia, opcionalmente filtrados por estado.',
+    description: 'Lista los envíos recientes, opcionalmente filtrados por estado o agencia.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        status: { type: 'string', description: 'Estado a filtrar: RECEIVED, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, FAILED, RETURNED. Omitir para todos.' },
+        status:    { type: 'string', description: 'Estado: RECEIVED, OUT_FOR_DELIVERY, DELIVERED, FAILED, RETURNED. Omitir para todos.' },
+        agencyId:  { type: 'string', description: 'ID de agencia específica (solo admin). Omitir para todas.' },
       },
     },
   },
   {
     name: 'crear_guia',
-    description: 'Crea una nueva guía de envío. Solicita al usuario los datos que falten antes de llamar esta herramienta.',
+    description: 'Crea una nueva guía de envío. Reúne todos los datos requeridos antes de llamar esta herramienta. Si el usuario es admin sin agencia, llama listar_agencias primero y pide que elija.',
     input_schema: {
       type: 'object' as const,
       properties: {
+        agencyId:      { type: 'string', description: 'ID de la agencia (requerido si el usuario es admin sin agencia asignada)' },
         senderName:    { type: 'string', description: 'Nombre del remitente' },
         senderPhone:   { type: 'string', description: 'Teléfono del remitente' },
         senderEmail:   { type: 'string', description: 'Email del remitente (opcional)' },
@@ -44,11 +60,11 @@ const tools: Anthropic.Tool[] = [
         destStreet:    { type: 'string', description: 'Calle y número del destino' },
         destCity:      { type: 'string', description: 'Ciudad del destino' },
         destState:     { type: 'string', description: 'Estado del destino en México' },
-        destColonia:   { type: 'string', description: 'Colonia del destino (opcional)' },
-        destZip:       { type: 'string', description: 'Código postal del destino (opcional)' },
-        weight:        { type: 'number', description: 'Peso en kilogramos (opcional)' },
+        destColonia:   { type: 'string', description: 'Colonia (opcional)' },
+        destZip:       { type: 'string', description: 'Código postal (opcional)' },
+        weight:        { type: 'number', description: 'Peso en kg (opcional)' },
         description:   { type: 'string', description: 'Descripción del contenido (opcional)' },
-        serviceType:   { type: 'string', description: 'Tipo de servicio: STANDARD, EXPRESS, ECONOMY. Default STANDARD.' },
+        serviceType:   { type: 'string', description: 'STANDARD, EXPRESS o ECONOMY. Default STANDARD.' },
         pieces:        { type: 'number', description: 'Número de piezas. Default 1.' },
       },
       required: ['senderName', 'recipientName', 'recipientPhone', 'destStreet', 'destCity', 'destState'],
@@ -56,60 +72,80 @@ const tools: Anthropic.Tool[] = [
   },
   {
     name: 'buscar_cliente',
-    description: 'Busca un cliente en el directorio de la agencia.',
+    description: 'Busca un cliente en el directorio.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        search: { type: 'string', description: 'Nombre, teléfono o email a buscar' },
+        search: { type: 'string', description: 'Nombre, teléfono o email' },
       },
       required: ['search'],
     },
   },
 ]
 
-// ── Ejecutar herramienta ─────────────────────────────────────────────────────
+// ── Ejecutar herramienta ──────────────────────────────────────────────────────
 
-async function runTool(name: string, input: any, agencyId: string | null): Promise<string> {
+async function runTool(
+  name: string,
+  input: any,
+  userAgencyId: string | null,
+): Promise<string> {
+
+  if (name === 'listar_agencias') {
+    const agencies = await prisma.agency.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, code: true },
+    })
+    if (!agencies.length) return 'No hay agencias activas registradas.'
+    return agencies.map(a => `• *${a.name}* (${a.code}) — ID: \`${a.id}\``).join('\n')
+  }
+
   if (name === 'consultar_envio') {
-    const { query } = input
     const shipments = await prisma.shipment.findMany({
       where: {
-        ...(agencyId ? { agencyId } : {}),
+        ...(userAgencyId ? { agencyId: userAgencyId } : {}),
         OR: [
-          { guideNumber: { contains: query, mode: 'insensitive' } },
-          { recipientName: { contains: query, mode: 'insensitive' } },
-          { senderName: { contains: query, mode: 'insensitive' } },
+          { guideNumber:   { contains: input.query, mode: 'insensitive' } },
+          { recipientName: { contains: input.query, mode: 'insensitive' } },
+          { senderName:    { contains: input.query, mode: 'insensitive' } },
         ],
       },
-      include: { destination: true },
+      include: { destination: true, agency: true },
       orderBy: { createdAt: 'desc' },
       take: 5,
     })
-    if (!shipments.length) return 'No se encontraron envíos con esa búsqueda.'
+    if (!shipments.length) return 'No se encontraron envíos.'
     return shipments.map(s =>
-      `• *${s.guideNumber}* — ${s.recipientName} → ${s.destination?.city ?? '?'}, ${s.destination?.state ?? ''}\n  Estado: ${STATUS_ES[s.status] ?? s.status}`
+      `• *${s.guideNumber}* — ${s.recipientName} → ${s.destination?.city ?? '?'}, ${s.destination?.state ?? ''}\n  Estado: ${STATUS_ES[s.status] ?? s.status}${!userAgencyId ? `\n  Agencia: ${s.agency?.name}` : ''}`
     ).join('\n')
   }
 
   if (name === 'listar_envios') {
-    const where: any = agencyId ? { agencyId } : {}
+    const effectiveAgency = userAgencyId ?? input.agencyId ?? null
+    const where: any = effectiveAgency ? { agencyId: effectiveAgency } : {}
     if (input.status) where.status = input.status
     const shipments = await prisma.shipment.findMany({
       where,
-      include: { destination: true },
+      include: { destination: true, agency: true },
       orderBy: { createdAt: 'desc' },
       take: 10,
     })
     if (!shipments.length) return 'No hay envíos registrados.'
     return shipments.map(s =>
-      `• *${s.guideNumber}* — ${s.recipientName} → ${s.destination?.city ?? '?'}\n  ${STATUS_ES[s.status] ?? s.status}`
+      `• *${s.guideNumber}* — ${s.recipientName} → ${s.destination?.city ?? '?'}\n  ${STATUS_ES[s.status] ?? s.status}${!userAgencyId ? ` | ${s.agency?.name}` : ''}`
     ).join('\n')
   }
 
   if (name === 'crear_guia') {
-    if (!agencyId) return 'Como administrador sin agencia asignada, no puedo crear guías desde WhatsApp. Usa el dashboard.'
-    const agency = await prisma.agency.findUnique({ where: { id: agencyId } })
-    if (!agency) return 'Error: agencia no encontrada.'
+    // Determinar agencia: la del usuario o la que eligió el admin
+    const resolvedAgencyId = userAgencyId ?? input.agencyId
+    if (!resolvedAgencyId) {
+      return 'Necesito saber a qué agencia pertenece este envío. Usa listar_agencias para ver las opciones y pídele al usuario que elija una.'
+    }
+
+    const agency = await prisma.agency.findUnique({ where: { id: resolvedAgencyId } })
+    if (!agency) return 'Agencia no encontrada. Verifica el ID.'
 
     const guideNumber = generateGuideNumber(agency.code)
     const destination = await prisma.address.create({
@@ -126,77 +162,71 @@ async function runTool(name: string, input: any, agencyId: string | null): Promi
     const shipment = await prisma.shipment.create({
       data: {
         guideNumber,
-        status:        'RECEIVED',
-        senderName:    input.senderName,
-        senderPhone:   input.senderPhone ?? null,
-        senderEmail:   input.senderEmail ?? null,
-        recipientName: input.recipientName,
-        recipientPhone:input.recipientPhone ?? null,
-        weight:        input.weight ?? null,
-        description:   input.description ?? null,
-        serviceType:   input.serviceType ?? 'STANDARD',
-        pieces:        input.pieces ?? 1,
-        agencyId,
-        destinationId: destination.id,
+        status:         'RECEIVED',
+        senderName:     input.senderName,
+        senderPhone:    input.senderPhone ?? null,
+        senderEmail:    input.senderEmail ?? null,
+        recipientName:  input.recipientName,
+        recipientPhone: input.recipientPhone ?? null,
+        weight:         input.weight ?? null,
+        description:    input.description ?? null,
+        serviceType:    input.serviceType ?? 'STANDARD',
+        pieces:         input.pieces ?? 1,
+        agencyId:       resolvedAgencyId,
+        destinationId:  destination.id,
       },
     })
 
     await prisma.trackingEvent.create({
-      data: { shipmentId: shipment.id, status: 'RECEIVED', description: 'Paquete recibido en bodega (vía WhatsApp)' },
+      data: {
+        shipmentId:  shipment.id,
+        status:      'RECEIVED',
+        description: 'Paquete recibido en bodega (vía WhatsApp)',
+      },
     })
 
-    return `✅ Guía creada exitosamente\n\n*${guideNumber}*\n\nRemitente: ${input.senderName}\nDestinatario: ${input.recipientName} — ${input.destCity}, ${input.destState}\nServicio: ${input.serviceType ?? 'STANDARD'}\n\nTracking: https://hurryops.app/tracking/${guideNumber}`
+    return `✅ *Guía creada*\n\n📦 *${guideNumber}*\nAgencia: ${agency.name}\nRemitente: ${input.senderName}\nDestinatario: ${input.recipientName}\nDestino: ${input.destCity}, ${input.destState}\nServicio: ${input.serviceType ?? 'STANDARD'}\n\n🔗 Tracking: https://hurryops.app/tracking/${guideNumber}`
   }
 
   if (name === 'buscar_cliente') {
     const clients = await prisma.client.findMany({
       where: {
-        ...(agencyId ? { agencyId } : {}),
+        ...(userAgencyId ? { agencyId: userAgencyId } : {}),
         OR: [
           { name:  { contains: input.search, mode: 'insensitive' } },
           { phone: { contains: input.search, mode: 'insensitive' } },
           { email: { contains: input.search, mode: 'insensitive' } },
         ],
       },
+      include: { agency: true },
       take: 5,
     })
-    if (!clients.length) return 'No se encontró ningún cliente con esa búsqueda.'
+    if (!clients.length) return 'No se encontró ningún cliente.'
     return clients.map(c =>
-      `• *${c.name}*${c.phone ? ' — ' + c.phone : ''}${c.city ? ' — ' + c.city : ''}`
+      `• *${c.name}*${c.phone ? ' — ' + c.phone : ''}${c.city ? ', ' + c.city : ''}${!userAgencyId ? ` (${c.agency?.name})` : ''}`
     ).join('\n')
   }
 
   return 'Herramienta no reconocida.'
 }
 
-const STATUS_ES: Record<string, string> = {
-  RECEIVED:         'Recibido en bodega',
-  IN_TRANSIT:       'En tránsito',
-  OUT_FOR_DELIVERY: 'En ruta de entrega',
-  DELIVERED:        'Entregado ✓',
-  FAILED:           'Intento fallido',
-  RETURNED:         'Devuelto',
-}
-
-// ── Webhook principal ────────────────────────────────────────────────────────
+// ── Webhook ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-
-  // Ultramsg manda los datos en body.data
-  const msg = body.data
+  const msg  = body.data
   if (!msg || msg.type !== 'chat') return NextResponse.json({ ok: true })
 
   const rawPhone = msg.from?.replace('@c.us', '').replace(/\D/g, '') ?? ''
   const text     = msg.body?.trim()
   if (!rawPhone || !text) return NextResponse.json({ ok: true })
 
-  // México: WhatsApp a veces agrega un "1" tras el 52 → normalizar ambos formatos
+  // Normalizar número mexicano (con/sin el "1" extra tras 52)
   const phonesToTry = Array.from(new Set([
     rawPhone,
-    rawPhone.startsWith('521') ? '52' + rawPhone.slice(3) : rawPhone,
-    rawPhone.startsWith('52') && !rawPhone.startsWith('521') ? '521' + rawPhone.slice(2) : rawPhone,
-  ]))
+    rawPhone.startsWith('521') ? '52' + rawPhone.slice(3) : null,
+    rawPhone.startsWith('52') && !rawPhone.startsWith('521') ? '521' + rawPhone.slice(2) : null,
+  ].filter(Boolean))) as string[]
 
   const user = await prisma.user.findFirst({
     where: { whatsappPhone: { in: phonesToTry }, active: true },
@@ -208,45 +238,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  // ADMIN puede operar sin agencia; agencia regular necesita agencyId
   if (user.role !== 'ADMIN' && !user.agencyId) {
     await sendWhatsapp(msg.from, '❌ Tu usuario no tiene una agencia asignada. Contacta a tu administrador.')
     return NextResponse.json({ ok: true })
   }
 
-  // Para ADMIN sin agencyId usamos null (las tools muestran todos los datos)
-  const agencyId = user.agencyId ?? null
+  const userAgencyId = user.agencyId ?? null
 
-  // Recuperar o crear sesión de conversación
+  // Historial de conversación
   const session = await prisma.whatsappSession.upsert({
-    where:  { phone },
-    create: { phone, messages: [] },
+    where:  { phone: rawPhone },
+    create: { phone: rawPhone, messages: [] },
     update: {},
   })
 
   const history: Anthropic.MessageParam[] = (session.messages as any[]) ?? []
-
-  // Agregar mensaje del usuario
   history.push({ role: 'user', content: text })
+  const messages: Anthropic.MessageParam[] = history.slice(-20)
 
-  // Mantener historial corto (últimas 20 entradas)
-  const trimmed = history.slice(-20)
+  const isAdmin  = user.role === 'ADMIN'
+  const agencyLabel = user.agency?.name ?? 'HurryOps'
 
-  // Llamar a Claude en loop de herramientas
+  // Loop de herramientas
   let finalText = ''
-  const messages: Anthropic.MessageParam[] = [...trimmed]
-
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const response = await anthropic.messages.create({
       model:      'claude-sonnet-4-5',
       max_tokens: 1024,
-      system: `Eres el asistente de operaciones de *${user.agency?.name ?? 'HurryOps'}* en WhatsApp.
-Ayudas a crear guías de envío, consultar estados y buscar clientes.
-Responde siempre en español, de forma concisa y clara, usando formato WhatsApp (*negrita*, _cursiva_).
-Cuando vayas a crear una guía, asegúrate de tener: nombre del remitente, nombre y teléfono del destinatario, y dirección de entrega (calle, ciudad, estado). Si falta algún dato, pídelo antes de crear.
-No inventes datos. Si no tienes suficiente información, pregunta.
-Fecha actual: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.`,
+      system: `Eres el asistente de operaciones de *${agencyLabel}* en WhatsApp.
+Rol del usuario: ${isAdmin ? 'Administrador (puede ver y crear en cualquier agencia)' : 'Usuario de agencia'}.
+${isAdmin && !userAgencyId ? 'Al crear guías, primero lista las agencias con listar_agencias y pide al usuario que elija una.' : ''}
+Ayudas a: crear guías, consultar envíos, listar envíos, buscar clientes.
+Responde en español, conciso, formato WhatsApp (*negrita*).
+Para crear guía necesitas: nombre remitente, nombre+teléfono destinatario, calle+ciudad+estado destino. Pide lo que falte.
+No inventes datos.
+Fecha: ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
       tools,
       messages,
     })
@@ -261,13 +287,11 @@ Fecha actual: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '
     if (response.stop_reason === 'tool_use') {
       messages.push({ role: 'assistant', content: response.content })
       const toolResults: Anthropic.ToolResultBlockParam[] = []
-
       for (const block of response.content) {
         if (block.type !== 'tool_use') continue
-        const result = await runTool(block.name, block.input, agencyId)
+        const result = await runTool(block.name, block.input, userAgencyId)
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
-
       messages.push({ role: 'user', content: toolResults })
       continue
     }
@@ -275,18 +299,17 @@ Fecha actual: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '
     break
   }
 
-  // Guardar historial actualizado (sin tool results para ahorrar espacio)
+  // Guardar historial (solo mensajes de texto para ahorrar espacio)
   const toSave = messages.filter(m =>
     typeof m.content === 'string' ||
     (Array.isArray(m.content) && m.content.every((b: any) => b.type === 'text'))
   ).slice(-20)
 
   await prisma.whatsappSession.update({
-    where:  { phone },
-    data:   { messages: toSave as any },
+    where: { phone: rawPhone },
+    data:  { messages: toSave as any },
   })
 
   if (finalText) await sendWhatsapp(msg.from, finalText)
-
   return NextResponse.json({ ok: true })
 }
