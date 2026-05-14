@@ -69,12 +69,12 @@ const tools: Anthropic.Tool[] = [
 
 // ── Ejecutar herramienta ─────────────────────────────────────────────────────
 
-async function runTool(name: string, input: any, agencyId: string): Promise<string> {
+async function runTool(name: string, input: any, agencyId: string | null): Promise<string> {
   if (name === 'consultar_envio') {
     const { query } = input
     const shipments = await prisma.shipment.findMany({
       where: {
-        agencyId,
+        ...(agencyId ? { agencyId } : {}),
         OR: [
           { guideNumber: { contains: query, mode: 'insensitive' } },
           { recipientName: { contains: query, mode: 'insensitive' } },
@@ -92,7 +92,7 @@ async function runTool(name: string, input: any, agencyId: string): Promise<stri
   }
 
   if (name === 'listar_envios') {
-    const where: any = { agencyId }
+    const where: any = agencyId ? { agencyId } : {}
     if (input.status) where.status = input.status
     const shipments = await prisma.shipment.findMany({
       where,
@@ -107,6 +107,7 @@ async function runTool(name: string, input: any, agencyId: string): Promise<stri
   }
 
   if (name === 'crear_guia') {
+    if (!agencyId) return 'Como administrador sin agencia asignada, no puedo crear guías desde WhatsApp. Usa el dashboard.'
     const agency = await prisma.agency.findUnique({ where: { id: agencyId } })
     if (!agency) return 'Error: agencia no encontrada.'
 
@@ -150,7 +151,7 @@ async function runTool(name: string, input: any, agencyId: string): Promise<stri
   if (name === 'buscar_cliente') {
     const clients = await prisma.client.findMany({
       where: {
-        agencyId,
+        ...(agencyId ? { agencyId } : {}),
         OR: [
           { name:  { contains: input.search, mode: 'insensitive' } },
           { phone: { contains: input.search, mode: 'insensitive' } },
@@ -186,20 +187,35 @@ export async function POST(req: NextRequest) {
   const msg = body.data
   if (!msg || msg.type !== 'chat') return NextResponse.json({ ok: true })
 
-  const phone = msg.from?.replace('@c.us', '').replace(/\D/g, '')
-  const text  = msg.body?.trim()
-  if (!phone || !text) return NextResponse.json({ ok: true })
+  const rawPhone = msg.from?.replace('@c.us', '').replace(/\D/g, '') ?? ''
+  const text     = msg.body?.trim()
+  if (!rawPhone || !text) return NextResponse.json({ ok: true })
 
-  // Buscar usuario vinculado a este número
+  // México: WhatsApp a veces agrega un "1" tras el 52 → normalizar ambos formatos
+  const phonesToTry = Array.from(new Set([
+    rawPhone,
+    rawPhone.startsWith('521') ? '52' + rawPhone.slice(3) : rawPhone,
+    rawPhone.startsWith('52') && !rawPhone.startsWith('521') ? '521' + rawPhone.slice(2) : rawPhone,
+  ]))
+
   const user = await prisma.user.findFirst({
-    where: { whatsappPhone: phone, active: true },
+    where: { whatsappPhone: { in: phonesToTry }, active: true },
     include: { agency: true },
   })
 
-  if (!user || !user.agencyId) {
-    await sendWhatsapp(msg.from, '❌ Tu número no está vinculado a ninguna agencia en HurryOps. Contacta a tu administrador.')
+  if (!user) {
+    await sendWhatsapp(msg.from, '❌ Tu número no está vinculado a HurryOps. Contacta a tu administrador.')
     return NextResponse.json({ ok: true })
   }
+
+  // ADMIN puede operar sin agencia; agencia regular necesita agencyId
+  if (user.role !== 'ADMIN' && !user.agencyId) {
+    await sendWhatsapp(msg.from, '❌ Tu usuario no tiene una agencia asignada. Contacta a tu administrador.')
+    return NextResponse.json({ ok: true })
+  }
+
+  // Para ADMIN sin agencyId usamos null (las tools muestran todos los datos)
+  const agencyId = user.agencyId ?? null
 
   // Recuperar o crear sesión de conversación
   const session = await prisma.whatsappSession.upsert({
@@ -248,7 +264,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '
 
       for (const block of response.content) {
         if (block.type !== 'tool_use') continue
-        const result = await runTool(block.name, block.input, user.agencyId)
+        const result = await runTool(block.name, block.input, agencyId)
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
 
