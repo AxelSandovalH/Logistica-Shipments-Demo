@@ -57,7 +57,7 @@ export default function NewShipmentPage() {
 
   const u = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
   const inp = (field: string, props?: any) => (
-    <input className="input !py-1.5 !text-sm" value={(form as any)[field]} onChange={e => u(field, e.target.value)} {...props} />
+    <input className="input !py-1.5 !text-sm" value={(form as any)[field]} onChange={e => u(field, e.target.value)} autoComplete="off" {...props} />
   )
 
   function selectClient(c: any) {
@@ -132,7 +132,7 @@ export default function NewShipmentPage() {
       </div>
 
       {/* Form */}
-      <form id="shipment-form" onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 md:p-5 overflow-auto">
+      <form id="shipment-form" onSubmit={handleSubmit} autoComplete="off" className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 md:p-5 overflow-auto">
 
         {/* Selector de agencia para ADMIN */}
         {agencies.length > 0 && (
@@ -281,6 +281,7 @@ export default function NewShipmentPage() {
                 rows={3}
                 value={form.notes}
                 onChange={e => u('notes', e.target.value)}
+                autoComplete="off"
               />
             </F>
           </div>
@@ -306,6 +307,7 @@ export default function NewShipmentPage() {
                   placeholder="Buscar cliente..."
                   value={clientSearch}
                   onChange={e => setClientSearch(e.target.value)}
+                  autoComplete="off"
                   autoFocus
                 />
               </div>
