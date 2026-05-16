@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Filter, RefreshCw } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Trash2 } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES } from '@/lib/utils'
 
 const STATUSES = ['', 'RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED']
@@ -14,6 +14,12 @@ export default function ShipmentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(d => setIsAdmin(d.role === 'ADMIN'))
+  }, [])
 
   const fetchShipments = useCallback(async () => {
     setLoading(true)
@@ -33,6 +39,14 @@ export default function ShipmentsPage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     setPage(1)
+    fetchShipments()
+  }
+
+  async function handleDelete(id: string, guideNumber: string) {
+    if (!confirm(`¿Eliminar el envío ${guideNumber}? Esta acción no se puede deshacer.`)) return
+    setDeletingId(id)
+    await fetch(`/api/shipments/${id}`, { method: 'DELETE' })
+    setDeletingId(null)
     fetchShipments()
   }
 
@@ -121,9 +135,21 @@ export default function ShipmentsPage() {
                       {new Date(s.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' })}
                     </td>
                     <td className="px-4 py-3">
-                      <Link href={`/dashboard/shipments/${s.id}`} className="text-blue-600 hover:underline text-xs font-medium">
-                        Ver →
-                      </Link>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Link href={`/dashboard/shipments/${s.id}`} className="text-blue-600 hover:underline text-xs font-medium">
+                          Ver →
+                        </Link>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(s.id, s.guideNumber)}
+                            disabled={deletingId === s.id}
+                            className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                            title="Eliminar envío"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

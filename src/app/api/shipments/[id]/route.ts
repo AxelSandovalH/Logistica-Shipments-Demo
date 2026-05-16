@@ -26,6 +26,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ shipment })
 }
 
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Solo administradores pueden eliminar envíos' }, { status: 403 })
+
+  const shipment = await prisma.shipment.findUnique({ where: { id: params.id } })
+  if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  await prisma.trackingEvent.deleteMany({ where: { shipmentId: params.id } })
+  await prisma.shipment.delete({ where: { id: params.id } })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

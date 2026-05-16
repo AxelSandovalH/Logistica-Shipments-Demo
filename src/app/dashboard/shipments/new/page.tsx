@@ -225,7 +225,7 @@ export default function NewShipmentPage() {
                 <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Es un regalo 🎁</span>
               )}
             </div>
-            <F label="Calle y número" span={2}>
+            <F label="Calle y número *" span={2}>
               <AddressAutocomplete
                 country="mx"
                 className="input !py-1.5 !text-sm"
