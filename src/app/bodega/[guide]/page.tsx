@@ -27,15 +27,15 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const NEXT_LABELS: Record<string, string> = {
-  IN_TRANSIT:       'Enviar a México 🚛',
-  RECEIVED:         'Confirmar llegada a MX ✅',
+  IN_TRANSIT:       'Enviar a México',
+  RECEIVED:         'Entregar al chofer',
   OUT_FOR_DELIVERY: 'Reintentar entrega',
   RETURNED:         'Marcar como devuelto',
 }
 
 const NEXT_COLORS: Record<string, string> = {
   IN_TRANSIT:       'bg-yellow-500 hover:bg-yellow-600',
-  RECEIVED:         'bg-blue-600 hover:bg-blue-700',
+  RECEIVED:         'bg-emerald-600 hover:bg-emerald-700',
   OUT_FOR_DELIVERY: 'bg-orange-500 hover:bg-orange-600',
   RETURNED:         'bg-gray-500 hover:bg-gray-600',
 }
@@ -78,9 +78,21 @@ export default function BodegaPage() {
 
     if (d.requiresPin) {
       // Recuperar bodega de sessionStorage si ya está autenticada
+      // Solo restaurar la sesión si el PIN guardado sigue siendo válido
       const saved = sessionStorage.getItem(SESSION_KEY)
       if (saved) {
-        try { setWarehouse(JSON.parse(saved)) } catch { sessionStorage.removeItem(SESSION_KEY) }
+        try {
+          const parsed = JSON.parse(saved)
+          // Verificar que el PIN sigue siendo válido contra el servidor
+          fetch(`/api/bodega/${guide}/verify-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: parsed.pin }),
+          }).then(r => {
+            if (r.ok) setWarehouse(parsed)
+            else sessionStorage.removeItem(SESSION_KEY)
+          })
+        } catch { sessionStorage.removeItem(SESSION_KEY) }
       }
     }
     setLoading(false)
