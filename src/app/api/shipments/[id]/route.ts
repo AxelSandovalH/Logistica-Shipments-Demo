@@ -82,14 +82,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     if (user.role !== 'ADMIN' && user.role !== 'AGENCY') return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
 
-    const shipment = await prisma.shipment.findUnique({ where: { id: params.id } })
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: params.id },
+      include: { events: { select: { status: true } } },
+    })
     if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     if (user.role !== 'ADMIN' && shipment.agencyId !== user.agencyId) return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
-    // Al asignar chofer, cambiar status a OUT_FOR_DELIVERY automáticamente
-    // (a menos que ya esté en un estado final o ya esté en reparto)
+    // Auto-cambio a OUT_FOR_DELIVERY solo si el envío ya pasó por bodega
+    // (tuvo al menos un evento IN_TRANSIT = pasó de USA a MX y está listo para repartir)
+    const wentThroughTransit = shipment.events.some(e => e.status === 'IN_TRANSIT')
     const shouldUpdateStatus =
       parsed.data.assignedDriverId !== null &&
+      wentThroughTransit &&
       !['DELIVERED', 'RETURNED', 'OUT_FOR_DELIVERY'].includes(shipment.status)
 
     const updated = await prisma.shipment.update({
