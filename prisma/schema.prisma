@@ -51,8 +51,22 @@ model User {
   agencyId   String?
   agency     Agency?  @relation(fields: [agencyId], references: [id])
 
-  createdShipments Shipment[]      @relation("CreatedBy")
-  trackingEvents   TrackingEvent[] @relation("CreatedBy")
+  createdShipments  Shipment[]      @relation("CreatedBy")
+  assignedShipments Shipment[]      @relation("AssignedDriver")
+  trackingEvents    TrackingEvent[] @relation("CreatedBy")
+  driverLocation    DriverLocation?
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String   @unique
+  lat       Float
+  lng       Float
+  heading   Float?
+  active    Boolean  @default(true)   // true = en ruta
+  updatedAt DateTime @updatedAt
+
+  driver    User     @relation(fields: [driverId], references: [id])
 }
 
 model Address {
@@ -104,6 +118,9 @@ model Shipment {
 
   createdById String?
   createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+
+  assignedDriverId String?
+  assignedDriver   User?   @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
 
   originId      String?
   origin        Address? @relation("Origin", fields: [originId], references: [id])

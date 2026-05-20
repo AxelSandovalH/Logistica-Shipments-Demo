@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, MapPin, Package, User, Clock, CheckCircle,
-  TruckIcon, AlertCircle, RotateCcw, ExternalLink, Printer, Pencil, X,
+  TruckIcon, AlertCircle, RotateCcw, ExternalLink, Printer, Pencil, X, UserCheck,
 } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES, SERVICE_TYPES } from '@/lib/utils'
 
@@ -42,6 +42,8 @@ export default function ShipmentDetailPage() {
   const [statusLocation, setStatusLocation] = useState('')
   const [editForm, setEditForm]         = useState<any>({})
   const [saving, setSaving]             = useState(false)
+  const [drivers, setDrivers]           = useState<any[]>([])
+  const [assigningDriver, setAssigningDriver] = useState(false)
 
   async function fetchShipment() {
     const res = await fetch(`/api/shipments/${id}`)
@@ -50,6 +52,20 @@ export default function ShipmentDetailPage() {
   }
 
   useEffect(() => { fetchShipment() }, [id])
+  useEffect(() => {
+    fetch('/api/drivers').then(r => r.json()).then(d => setDrivers(d.drivers ?? []))
+  }, [])
+
+  async function assignDriver(driverId: string | null) {
+    setAssigningDriver(true)
+    await fetch(`/api/shipments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _assign: true, assignedDriverId: driverId }),
+    })
+    setAssigningDriver(false)
+    fetchShipment()
+  }
 
   function openEdit() {
     if (!shipment) return
@@ -171,6 +187,25 @@ export default function ShipmentDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Asignar chofer */}
+          {drivers.length > 0 && (
+            <div className="card !p-4 flex items-center gap-3">
+              <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
+              <p className="text-sm font-medium text-gray-700 shrink-0">Chofer asignado:</p>
+              <select
+                className="input !py-1.5 !text-sm flex-1"
+                value={shipment.assignedDriverId ?? ''}
+                onChange={e => assignDriver(e.target.value || null)}
+                disabled={assigningDriver}
+              >
+                <option value="">Sin asignar</option>
+                {drivers.map((d: any) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="card">
             <div className="flex items-center gap-2 mb-3">

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
-import { Package, MapPin, CheckCircle, TruckIcon, AlertCircle, RotateCcw, Clock } from 'lucide-react'
+import { Package, MapPin, CheckCircle, TruckIcon, AlertCircle, RotateCcw, Clock, Navigation } from 'lucide-react'
 import Image from 'next/image'
 import { STATUS_LABELS } from '@/lib/utils'
 
@@ -38,6 +38,7 @@ export default async function TrackingPage({ params }: { params: { guide: string
       agency: true,
       destination: true,
       events: { orderBy: { createdAt: 'asc' } },
+      assignedDriver: { select: { id: true, name: true } },
     },
   })
 
@@ -45,6 +46,17 @@ export default async function TrackingPage({ params }: { params: { guide: string
 
   const Icon = STATUS_ICONS[shipment.status] ?? Package
   const progress = PROGRESS[shipment.status] ?? 0
+
+  // Verificar si el chofer tiene GPS activo
+  let driverLocation: { lat: number; lng: number } | null = null
+  if (shipment.status === 'OUT_FOR_DELIVERY' && shipment.assignedDriverId) {
+    const loc = await prisma.driverLocation.findUnique({
+      where: { driverId: shipment.assignedDriverId },
+      select: { lat: true, lng: true, active: true, updatedAt: true },
+    })
+    const stale = loc ? (Date.now() - new Date(loc.updatedAt).getTime()) > 5 * 60 * 1000 : true
+    if (loc && loc.active && !stale) driverLocation = { lat: loc.lat, lng: loc.lng }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700">
@@ -57,6 +69,23 @@ export default async function TrackingPage({ params }: { params: { guide: string
             <p className="text-xs text-blue-200">Seguimiento de envío</p>
           </div>
         </div>
+
+        {/* Banner GPS activo */}
+        {driverLocation && (
+          <div className="bg-green-400 text-green-900 rounded-2xl px-5 py-3 mb-4 flex items-center gap-3 shadow">
+            <Navigation className="w-5 h-5 animate-pulse shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Tu chofer está en camino</p>
+              <a
+                href={`https://maps.google.com/?q=${driverLocation.lat},${driverLocation.lng}`}
+                target="_blank"
+                className="text-xs underline"
+              >
+                Ver ubicación aproximada →
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Card principal */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6">

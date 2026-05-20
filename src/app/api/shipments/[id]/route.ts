@@ -9,6 +9,11 @@ const UpdateStatusSchema = z.object({
   location: z.string().optional(),
 })
 
+const AssignDriverSchema = z.object({
+  _assign: z.literal(true),
+  assignedDriverId: z.string().nullable(),
+})
+
 const EditShipmentSchema = z.object({
   _edit: z.literal(true),
   senderName:     z.string().min(1).optional(),
@@ -70,6 +75,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
+
+  // Rama asignación de chofer
+  if (body._assign) {
+    const parsed = AssignDriverSchema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+    if (user.role !== 'ADMIN' && user.role !== 'AGENCY') return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+
+    const shipment = await prisma.shipment.findUnique({ where: { id: params.id } })
+    if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    if (user.role !== 'ADMIN' && shipment.agencyId !== user.agencyId) return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
+
+    const updated = await prisma.shipment.update({
+      where: { id: params.id },
+      data: { assignedDriverId: parsed.data.assignedDriverId },
+    })
+    return NextResponse.json({ shipment: updated })
+  }
 
   // Rama edición de datos
   if (body._edit) {

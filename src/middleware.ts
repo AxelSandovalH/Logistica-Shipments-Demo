@@ -25,13 +25,15 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const path = request.nextUrl.pathname
+
   // Sin sesión → al login
-  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/pending')) {
+  if (!user && (path.startsWith('/dashboard') || path.startsWith('/driver') || path === '/pending')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Ya autenticado → no volver al login
-  if (user && request.nextUrl.pathname === '/login') {
+  if (user && path === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -39,5 +41,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/pending', '/login'],
+  matcher: ['/dashboard/:path*', '/driver/:path*', '/driver', '/pending', '/login'],
 }
