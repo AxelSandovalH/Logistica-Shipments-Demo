@@ -13,7 +13,7 @@ export async function GET() {
       status: { in: ['RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'FAILED'] },
     },
     include: { destination: true, agency: true },
-    orderBy: { updatedAt: 'asc' },
+    orderBy: { updatedAt: 'desc' },
   })
 
   const delivered = await prisma.shipment.count({
