@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
   })
 
   if (!user) {
-    await sendWhatsapp(msg.from, '❌ Tu número no está vinculado a HurryOps. Contacta a tu administrador.')
+    await sendWhatsapp(msg.from, `❌ Número no vinculado. Raw: ${rawPhone} | Intentos: ${phonesToTry.join(', ')}`)
     return NextResponse.json({ ok: true })
   }
 
