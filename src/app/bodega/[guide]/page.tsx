@@ -78,21 +78,9 @@ export default function BodegaPage() {
 
     if (d.requiresPin) {
       // Recuperar bodega de sessionStorage si ya está autenticada
-      // Solo restaurar la sesión si el PIN guardado sigue siendo válido
       const saved = sessionStorage.getItem(SESSION_KEY)
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          // Verificar que el PIN sigue siendo válido contra el servidor
-          fetch(`/api/bodega/${guide}/verify-pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: parsed.pin }),
-          }).then(r => {
-            if (r.ok) setWarehouse(parsed)
-            else sessionStorage.removeItem(SESSION_KEY)
-          })
-        } catch { sessionStorage.removeItem(SESSION_KEY) }
+        try { setWarehouse(JSON.parse(saved)) } catch { sessionStorage.removeItem(SESSION_KEY) }
       }
     }
     setLoading(false)
