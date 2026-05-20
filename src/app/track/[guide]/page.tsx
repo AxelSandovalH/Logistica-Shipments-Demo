@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { Package, MapPin, CheckCircle, TruckIcon, AlertCircle, RotateCcw, Clock, Navigation } from 'lucide-react'
 import Image from 'next/image'
-import { STATUS_LABELS } from '@/lib/utils'
+import { STATUS_LABELS, getStatusLabel } from '@/lib/utils'
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
   RECEIVED: Package,
@@ -97,7 +97,7 @@ export default async function TrackingPage({ params }: { params: { guide: string
               </div>
               <div>
                 <p className="text-sm opacity-80">Estado actual</p>
-                <p className="text-xl font-bold">{STATUS_LABELS[shipment.status]}</p>
+                <p className="text-xl font-bold">{getStatusLabel(shipment.status, shipment.events)}</p>
               </div>
             </div>
 
@@ -173,7 +173,7 @@ export default async function TrackingPage({ params }: { params: { guide: string
                       </div>
                       <div className="pb-3 min-w-0">
                         <p className={`text-sm font-medium ${i === 0 ? 'text-blue-700' : 'text-gray-700'}`}>
-                          {STATUS_LABELS[event.status] ?? event.status}
+                          {getStatusLabel(event.status, [event])}
                         </p>
                         <p className="text-xs text-gray-500">{event.description}</p>
                         {event.location && (

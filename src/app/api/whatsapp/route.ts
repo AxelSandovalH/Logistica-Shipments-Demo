@@ -7,7 +7,7 @@ import { generateGuideNumber } from '@/lib/utils'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const STATUS_ES: Record<string, string> = {
-  RECEIVED:         'Recibido en bodega',
+  RECEIVED:         'Recibido en bodega EE.UU.',
   IN_TRANSIT:       'En tránsito',
   OUT_FOR_DELIVERY: 'En ruta de entrega',
   DELIVERED:        'Entregado ✓',

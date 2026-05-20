@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { sendStatusUpdateEmail } from '@/lib/email'
 
 const DESCRIPTIONS: Record<string, string> = {
-  RECEIVED:         'Paquete recibido en bodega',
+  RECEIVED:         'Recibido en bodega EE.UU.',
+  RECEIVED_MX:      'Confirmado en bodega México',
   IN_TRANSIT:       'Paquete en tránsito hacia México',
   OUT_FOR_DELIVERY: 'Paquete en ruta de entrega final',
   DELIVERED:        'Paquete entregado al destinatario',
@@ -90,7 +91,9 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
       data: {
         shipmentId:  shipment.id,
         status,
-        description: description || DESCRIPTIONS[status],
+        description: description || (shipment.status === 'IN_TRANSIT' && status === 'RECEIVED'
+          ? DESCRIPTIONS['RECEIVED_MX']
+          : DESCRIPTIONS[status]),
         location:    location || null,
         warehouseId: warehouseId,
         photoUrl:    photoUrl || null,

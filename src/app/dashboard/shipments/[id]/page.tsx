@@ -5,7 +5,7 @@ import {
   ArrowLeft, MapPin, Package, User, Clock, CheckCircle,
   TruckIcon, AlertCircle, RotateCcw, ExternalLink, Printer, Pencil, X, UserCheck,
 } from 'lucide-react'
-import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES, SERVICE_TYPES } from '@/lib/utils'
+import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES, SERVICE_TYPES, getStatusLabel } from '@/lib/utils'
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
   RECEIVED: Package, IN_TRANSIT: TruckIcon, OUT_FOR_DELIVERY: MapPin,
@@ -137,7 +137,7 @@ export default function ShipmentDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-bold font-mono text-gray-900">{shipment.guideNumber}</h1>
-            <span className={`badge ${STATUS_COLORS[shipment.status]}`}>{STATUS_LABELS[shipment.status]}</span>
+            <span className={`badge ${STATUS_COLORS[shipment.status]}`}>{getStatusLabel(shipment.status, shipment.events)}</span>
           </div>
           <p className="text-sm text-gray-500">Agencia: {shipment.agency?.name}</p>
         </div>
@@ -243,7 +243,7 @@ export default function ShipmentDetailPage() {
                       {i < arr.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1 min-h-4" />}
                     </div>
                     <div className="pb-4 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{STATUS_LABELS[event.status] ?? event.status}</p>
+                      <p className="text-sm font-medium text-gray-900">{getStatusLabel(event.status, [event])}</p>
                       <p className="text-xs text-gray-500">{event.description}</p>
                       {event.location && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{event.location}</p>}
                       {event.photoUrl && (

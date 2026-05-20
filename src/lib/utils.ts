@@ -15,12 +15,29 @@ export function generateGuideNumber(agencyCode: string): string {
 }
 
 export const STATUS_LABELS: Record<string, string> = {
-  RECEIVED: 'Recibido',
+  RECEIVED: 'Recibido en bodega',
   IN_TRANSIT: 'En tránsito',
   OUT_FOR_DELIVERY: 'En ruta de entrega',
   DELIVERED: 'Entregado',
   FAILED: 'Intento fallido',
   RETURNED: 'Devuelto',
+}
+
+/** Devuelve el label más descriptivo posible para RECEIVED,
+ *  usando los tracking events para saber si es bodega USA o MX. */
+export function getStatusLabel(
+  status: string,
+  events?: Array<{ status: string; description?: string | null }>,
+): string {
+  if (status === 'RECEIVED' && events?.length) {
+    // Buscar el evento RECEIVED más reciente
+    const ev = [...events].reverse().find(e => e.status === 'RECEIVED')
+    if (ev?.description?.toLowerCase().includes('méx') || ev?.description?.toLowerCase().includes('mex')) {
+      return 'Recibido en bodega MX'
+    }
+    return 'Recibido en bodega USA'
+  }
+  return STATUS_LABELS[status] ?? status
 }
 
 export const STATUS_COLORS: Record<string, string> = {
