@@ -143,6 +143,7 @@ model TrackingEvent {
   status      String
   description String
   location    String?
+  photoUrl    String?
   createdAt   DateTime @default(now())
 
   shipmentId  String

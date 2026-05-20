@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Filter, RefreshCw, Trash2 } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Trash2, Download } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES } from '@/lib/utils'
 
 const STATUSES = ['', 'RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED']
@@ -57,10 +57,20 @@ export default function ShipmentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Envíos</h1>
           <p className="text-sm text-gray-500">{total} envíos en total</p>
         </div>
-        <Link href="/dashboard/shipments/new" className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Nuevo envío
-        </Link>
+        <div className="flex gap-2">
+          <a
+            href={`/api/shipments/export?${new URLSearchParams({ ...(status ? { status } : {}), ...(search ? { search } : {}) })}`}
+            className="btn-secondary text-sm"
+            download
+          >
+            <Download className="w-4 h-4" />
+            Excel
+          </a>
+          <Link href="/dashboard/shipments/new" className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Nuevo envío
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}

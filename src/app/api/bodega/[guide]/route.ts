@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: { guide: stri
 }
 
 export async function POST(req: NextRequest, { params }: { params: { guide: string } }) {
-  const { status, location, description, pin } = await req.json()
+  const { status, location, description, pin, photoUrl } = await req.json()
 
   const shipment = await prisma.shipment.findUnique({
     where: { guideNumber: params.guide },
@@ -92,6 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
         description: description || DESCRIPTIONS[status],
         location:    location || null,
         warehouseId: warehouseId,
+        photoUrl:    photoUrl || null,
       },
     }),
   ])

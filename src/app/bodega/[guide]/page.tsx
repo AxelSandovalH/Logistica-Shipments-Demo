@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Package, Truck, MapPin, CheckCircle, AlertCircle, RotateCcw, ArrowRight, Loader2, Lock, Delete, Warehouse } from 'lucide-react'
+import { Package, Truck, MapPin, CheckCircle, AlertCircle, RotateCcw, ArrowRight, Loader2, Lock, Delete, Warehouse, Camera, X, Image } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   RECEIVED:         'Recibido en bodega',
@@ -56,6 +56,9 @@ export default function BodegaPage() {
   const [done, setDone] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [location, setLocation] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // Warehouse session
   const [requiresPin, setRequiresPin] = useState(false)
@@ -111,20 +114,42 @@ export default function BodegaPage() {
     }
   }
 
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  function removePhoto() {
+    setPhotoFile(null)
+    setPhotoPreview(null)
+  }
+
   async function handleUpdate(status: string) {
     setSaving(true)
     setError('')
     const pin = warehouse?.pin
+
+    let photoUrl: string | undefined
+    if (photoFile) {
+      setUploading(true)
+      const fd = new FormData()
+      fd.append('file', photoFile)
+      const upRes = await fetch('/api/bodega/upload', { method: 'POST', body: fd })
+      setUploading(false)
+      if (upRes.ok) { const d = await upRes.json(); photoUrl = d.url }
+    }
+
     const res = await fetch(`/api/bodega/${guide}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, location: location || undefined, pin }),
+      body: JSON.stringify({ status, location: location || undefined, pin, photoUrl }),
     })
     setSaving(false)
     if (!res.ok) {
       const d = await res.json()
       if (d.requiresPin) {
-        // PIN invalidado (bodega desactivada)
         setWarehouse(null)
         sessionStorage.removeItem(SESSION_KEY)
       }
@@ -132,6 +157,8 @@ export default function BodegaPage() {
       return
     }
     setDone(status)
+    setPhotoFile(null)
+    setPhotoPreview(null)
     fetchShipment()
   }
 
@@ -306,15 +333,46 @@ export default function BodegaPage() {
               value={location}
               onChange={e => setLocation(e.target.value)}
             />
+
+            {/* Evidencia fotográfica */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                <Camera className="w-3.5 h-3.5" /> Evidencia fotográfica (opcional)
+              </p>
+              {photoPreview ? (
+                <div className="relative">
+                  <img src={photoPreview} alt="Evidencia" className="w-full rounded-xl border border-gray-200 object-cover max-h-48" />
+                  <button
+                    onClick={removePhoto}
+                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-200 rounded-xl py-4 text-gray-400 text-sm cursor-pointer hover:border-blue-300 hover:text-blue-400 transition-colors">
+                  <Image className="w-5 h-5" />
+                  Tomar foto o seleccionar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                </label>
+              )}
+            </div>
+
             {nextStatuses.map((status: string) => (
               <button
                 key={status}
                 onClick={() => handleUpdate(status)}
-                disabled={saving}
+                disabled={saving || uploading}
                 className={`w-full flex items-center justify-between px-5 py-4 rounded-xl text-white font-semibold text-base transition-colors disabled:opacity-60 ${NEXT_COLORS[status] ?? 'bg-blue-500 hover:bg-blue-600'}`}
               >
                 <span>{NEXT_LABELS[status] ?? STATUS_LABELS[status]}</span>
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                {(saving || uploading) ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
               </button>
             ))}
             {error && <p className="text-sm text-red-600 text-center">{error}</p>}

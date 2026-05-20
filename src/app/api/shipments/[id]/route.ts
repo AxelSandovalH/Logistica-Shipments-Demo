@@ -9,6 +9,31 @@ const UpdateStatusSchema = z.object({
   location: z.string().optional(),
 })
 
+const EditShipmentSchema = z.object({
+  _edit: z.literal(true),
+  senderName:     z.string().min(1).optional(),
+  senderPhone:    z.string().optional(),
+  senderEmail:    z.string().email().optional().or(z.literal('')),
+  recipientName:  z.string().min(1).optional(),
+  recipientPhone: z.string().optional(),
+  recipientEmail: z.string().email().optional().or(z.literal('')),
+  notifyRecipient: z.boolean().optional(),
+  weight:         z.coerce.number().positive().optional().nullable(),
+  pieces:         z.coerce.number().int().positive().optional(),
+  packageType:    z.enum(['PACKAGE', 'ENVELOPE', 'PALLET']).optional(),
+  serviceType:    z.enum(['STANDARD', 'EXPRESS', 'ECONOMY']).optional(),
+  description:    z.string().optional(),
+  declaredValue:  z.coerce.number().positive().optional().nullable(),
+  notes:          z.string().optional(),
+  // dirección destino
+  destStreet:     z.string().optional(),
+  destColonia:    z.string().optional(),
+  destCity:       z.string().optional(),
+  destState:      z.string().optional(),
+  destZip:        z.string().optional(),
+  destReferences: z.string().optional(),
+})
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -45,8 +70,52 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
+
+  // Rama edición de datos
+  if (body._edit) {
+    const parsed = EditShipmentSchema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: params.id },
+      include: { destination: true },
+    })
+    if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    if (user.role !== 'ADMIN' && shipment.agencyId !== user.agencyId)
+      return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
+
+    const { _edit, destStreet, destColonia, destCity, destState, destZip, destReferences, ...shipmentFields } = parsed.data
+
+    // Actualizar dirección destino si se envió algún campo
+    if (shipment.destinationId && (destStreet || destColonia || destCity || destState || destZip || destReferences !== undefined)) {
+      await prisma.address.update({
+        where: { id: shipment.destinationId },
+        data: {
+          ...(destStreet     !== undefined && { street: destStreet }),
+          ...(destColonia    !== undefined && { colonia: destColonia }),
+          ...(destCity       !== undefined && { city: destCity }),
+          ...(destState      !== undefined && { state: destState }),
+          ...(destZip        !== undefined && { zip: destZip }),
+          ...(destReferences !== undefined && { references: destReferences }),
+        },
+      })
+    }
+
+    const updated = await prisma.shipment.update({
+      where: { id: params.id },
+      data: {
+        ...shipmentFields,
+        senderEmail:    shipmentFields.senderEmail    || null,
+        recipientEmail: shipmentFields.recipientEmail || null,
+      },
+      include: { agency: true, origin: true, destination: true, events: { orderBy: { createdAt: 'asc' }, include: { createdBy: true } }, createdBy: true },
+    })
+    return NextResponse.json({ shipment: updated })
+  }
+
+  // Rama cambio de estado
   const parsed = UpdateStatusSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
   const shipment = await prisma.shipment.findUnique({ where: { id: params.id } })
   if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })

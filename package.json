@@ -28,6 +28,7 @@
     "react-qr-code": "^2.0.21",
     "resend": "^6.12.3",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
