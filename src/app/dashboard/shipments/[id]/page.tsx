@@ -259,7 +259,7 @@ export default function ShipmentDetailPage() {
                     <input type="checkbox" id="editNotify" checked={editForm.notifyRecipient} onChange={e => uf('notifyRecipient', e.target.checked)} className="rounded border-gray-300 text-blue-600 w-4 h-4" />
                     <label htmlFor="editNotify" className="text-xs text-gray-600">Notificar al destinatario por email</label>
                   </div>
-                  <Field label="Calle" span={2}><input className="input !py-1.5 !text-sm w-full" autoComplete="off" value={editForm.destStreet} onChange={e => uf('destStreet', e.target.value)} /></Field>
+                  <div className="col-span-2"><Field label="Calle"><input className="input !py-1.5 !text-sm w-full" autoComplete="off" value={editForm.destStreet} onChange={e => uf('destStreet', e.target.value)} /></Field></div>
                   <Field label="Colonia">{inp('destColonia')}</Field>
                   <Field label="Ciudad">{inp('destCity')}</Field>
                   <Field label="Estado">
