@@ -221,11 +221,13 @@ export async function POST(req: NextRequest) {
   const text     = msg.body?.trim()
   if (!rawPhone || !text) return NextResponse.json({ ok: true })
 
-  // Normalizar número mexicano (con/sin el "1" extra tras 52)
+  // Normalizar número mexicano — cubre todos los formatos posibles de Ultramsg
   const phonesToTry = Array.from(new Set([
-    rawPhone,
-    rawPhone.startsWith('521') ? '52' + rawPhone.slice(3) : null,
-    rawPhone.startsWith('52') && !rawPhone.startsWith('521') ? '521' + rawPhone.slice(2) : null,
+    rawPhone,                                                                          // tal cual
+    rawPhone.startsWith('521') ? '52' + rawPhone.slice(3) : null,                    // 521XXX → 52XXX
+    rawPhone.startsWith('52') && !rawPhone.startsWith('521') ? '521' + rawPhone.slice(2) : null, // 52XXX → 521XXX
+    !rawPhone.startsWith('52') ? '52' + rawPhone : null,                             // XXX → 52XXX
+    !rawPhone.startsWith('52') ? '521' + rawPhone : null,                            // XXX → 521XXX
   ].filter(Boolean))) as string[]
 
   const user = await prisma.user.findFirst({
