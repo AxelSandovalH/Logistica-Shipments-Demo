@@ -98,13 +98,21 @@ export default function NewShipmentPage() {
             <CheckCircle className="w-7 h-7 text-green-600" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 mb-1">¡Envío creado!</h2>
-          <p className="text-sm text-gray-500 mb-3">Número de guía generado:</p>
-          <div className="bg-gray-50 rounded-lg px-4 py-3 font-mono text-base font-bold text-blue-700 mb-5">
+          <div className="bg-gray-50 rounded-lg px-4 py-3 font-mono text-base font-bold text-blue-700 my-4">
             {success}
           </div>
-          <div className="flex gap-3 justify-center">
-            <button className="btn-secondary" onClick={() => setSuccess(null)}>Crear otro</button>
-            <button className="btn-primary" onClick={() => router.push('/dashboard/shipments')}>Ver envíos</button>
+          {/* Imprimir — acción principal, un solo clic */}
+          <a
+            href={`/print/${success}`}
+            target="_blank"
+            className="btn-primary w-full flex items-center justify-center gap-2 mb-3 !py-3 !text-base"
+          >
+            <Package className="w-5 h-5" />
+            Imprimir guía
+          </a>
+          <div className="flex gap-2">
+            <button className="btn-secondary flex-1" onClick={() => setSuccess(null)}>Crear otro</button>
+            <button className="btn-secondary flex-1" onClick={() => router.push('/dashboard/shipments')}>Ver envíos</button>
           </div>
         </div>
       </div>
