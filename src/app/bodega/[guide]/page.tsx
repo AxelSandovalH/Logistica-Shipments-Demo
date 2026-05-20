@@ -312,12 +312,21 @@ export default function BodegaPage() {
               {shipment.events.map((e: any, i: number) => (
                 <div key={e.id} className={`flex items-start gap-2 text-sm ${i === 0 ? 'text-gray-900' : 'text-gray-400'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${i === 0 ? 'bg-blue-500' : 'bg-gray-300'}`} />
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className={i === 0 ? 'font-medium' : ''}>{STATUS_LABELS[e.status] ?? e.status}</p>
                     {e.warehouse && (
                       <p className="text-xs text-blue-500">{e.warehouse.city}</p>
                     )}
                     <p className="text-xs">{e.description}</p>
+                    {e.photoUrl && (
+                      <a href={e.photoUrl} target="_blank" rel="noopener noreferrer" className="mt-1.5 block">
+                        <img
+                          src={e.photoUrl}
+                          alt="Evidencia"
+                          className="rounded-lg w-full max-w-[160px] border border-gray-200 object-cover hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}

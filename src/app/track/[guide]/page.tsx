@@ -181,6 +181,15 @@ export default async function TrackingPage({ params }: { params: { guide: string
                             <MapPin className="w-3 h-3" /> {event.location}
                           </p>
                         )}
+                        {event.photoUrl && (
+                          <a href={event.photoUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+                            <img
+                              src={event.photoUrl}
+                              alt="Evidencia"
+                              className="rounded-lg w-full max-w-[200px] border border-gray-200 object-cover hover:opacity-90 transition-opacity"
+                            />
+                          </a>
+                        )}
                         <p className="text-xs text-gray-400 mt-0.5">
                           {new Date(event.createdAt).toLocaleString('es-MX', {
                             day: '2-digit', month: 'short', year: 'numeric',
