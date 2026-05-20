@@ -86,10 +86,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     if (user.role !== 'ADMIN' && shipment.agencyId !== user.agencyId) return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
+    // Al asignar chofer, cambiar status a OUT_FOR_DELIVERY automáticamente
+    // (a menos que ya esté en un estado final o ya esté en reparto)
+    const shouldUpdateStatus =
+      parsed.data.assignedDriverId !== null &&
+      !['DELIVERED', 'RETURNED', 'OUT_FOR_DELIVERY'].includes(shipment.status)
+
     const updated = await prisma.shipment.update({
       where: { id: params.id },
-      data: { assignedDriverId: parsed.data.assignedDriverId },
+      data: {
+        assignedDriverId: parsed.data.assignedDriverId,
+        ...(shouldUpdateStatus && { status: 'OUT_FOR_DELIVERY' }),
+      },
     })
+
+    if (shouldUpdateStatus) {
+      await prisma.trackingEvent.create({
+        data: {
+          shipmentId: params.id,
+          status: 'OUT_FOR_DELIVERY',
+          description: 'Paquete asignado a chofer y en ruta de entrega',
+          createdById: user.id,
+        },
+      })
+    }
+
     return NextResponse.json({ shipment: updated })
   }
 

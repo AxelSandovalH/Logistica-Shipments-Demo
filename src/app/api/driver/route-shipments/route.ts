@@ -10,7 +10,7 @@ export async function GET() {
   const shipments = await prisma.shipment.findMany({
     where: {
       assignedDriverId: user.id,
-      status: { in: ['OUT_FOR_DELIVERY', 'FAILED'] },
+      status: { in: ['RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'FAILED'] },
     },
     include: { destination: true, agency: true },
     orderBy: { updatedAt: 'asc' },
