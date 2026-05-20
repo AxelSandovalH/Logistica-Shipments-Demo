@@ -4,17 +4,18 @@ import { sendStatusUpdateEmail } from '@/lib/email'
 
 const DESCRIPTIONS: Record<string, string> = {
   RECEIVED:         'Paquete recibido en bodega',
-  IN_TRANSIT:       'Paquete en tránsito hacia destino',
+  IN_TRANSIT:       'Paquete en tránsito hacia México',
   OUT_FOR_DELIVERY: 'Paquete en ruta de entrega final',
   DELIVERED:        'Paquete entregado al destinatario',
   FAILED:           'Intento de entrega fallido',
   RETURNED:         'Paquete devuelto a origen',
 }
 
+// Flujo real: Bodega USA → tránsito → Bodega MX → chofer (asignado desde dashboard)
 const BODEGA_TRANSITIONS: Record<string, string[]> = {
-  RECEIVED:         ['OUT_FOR_DELIVERY'],
-  OUT_FOR_DELIVERY: ['RECEIVED'],
-  FAILED:           ['OUT_FOR_DELIVERY', 'RETURNED'],
+  RECEIVED:         ['IN_TRANSIT'],                   // Bodega USA: enviar a México
+  IN_TRANSIT:       ['RECEIVED'],                     // Bodega MX: confirmar llegada
+  FAILED:           ['OUT_FOR_DELIVERY', 'RETURNED'], // Reintento o devolución
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { guide: string } }) {
