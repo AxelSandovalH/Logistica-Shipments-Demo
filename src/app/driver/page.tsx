@@ -1,7 +1,9 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+
+const DriverMap = lazy(() => import('@/components/DriverMap'))
 
 type Shipment = {
   id: string
@@ -29,6 +31,7 @@ export default function DriverPage() {
   const [photoFile, setPhotoFile]               = useState<File | null>(null)
   const [photoPreview, setPhotoPreview]         = useState<string | null>(null)
   const [saving, setSaving]                     = useState(false)
+  const [gpsPos, setGpsPos]                     = useState<{ lat: number; lng: number } | null>(null)
   const interval                                = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -52,10 +55,13 @@ export default function DriverPage() {
 
   function sendGPS(active: boolean) {
     navigator.geolocation?.getCurrentPosition(p => {
+      const lat = p.coords.latitude
+      const lng = p.coords.longitude
+      setGpsPos({ lat, lng })
       fetch('/api/driver/location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude, active }),
+        body: JSON.stringify({ lat, lng, active }),
       })
     }, null, { enableHighAccuracy: true })
   }
@@ -196,6 +202,26 @@ export default function DriverPage() {
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(0,0,0,.10)' }}>
                   {/* Status bar */}
                   <div className={`h-1.5 ${active.status === 'FAILED' ? 'bg-red-500' : 'bg-blue-500'}`} />
+
+                  {/* Mapa embebido */}
+                  <div className="w-full" style={{ height: '200px' }}>
+                    <Suspense fallback={
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <DriverMap
+                        driverLat={gpsPos?.lat ?? null}
+                        driverLng={gpsPos?.lng ?? null}
+                        destAddress={[
+                          active.destination?.street,
+                          active.destination?.colonia,
+                          active.destination?.city,
+                          active.destination?.state,
+                        ].filter(Boolean).join(', ')}
+                      />
+                    </Suspense>
+                  </div>
 
                   <div className="p-5">
                     {/* Recipient */}
