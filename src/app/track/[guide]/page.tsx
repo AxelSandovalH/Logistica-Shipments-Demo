@@ -205,9 +205,22 @@ export default async function TrackingPage({ params }: { params: { guide: string
           </div>
         </div>
 
-        <p className="text-center text-xs text-blue-200">
-          Servicio de logística EE.UU. — México · {shipment.agency?.name}
-        </p>
+        <div className="text-center space-y-1">
+          <p className="text-xs text-blue-200">
+            Servicio de logística EE.UU. — México · {shipment.agency?.name}
+          </p>
+          <p className="text-xs text-blue-300/50">
+            Desarrollado por{' '}
+            <a
+              href="https://axelsandoval.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-300/70 hover:text-blue-200 transition-colors underline underline-offset-2"
+            >
+              axelsandoval.dev
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )
