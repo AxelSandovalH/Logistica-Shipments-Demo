@@ -229,3 +229,160 @@ export async function sendStatusUpdateEmail(p: StatusEmailParams) {
     html,
   })
 }
+
+// ── Onboarding: solicitud recibida (al solicitante) ───────────────────────────
+
+interface OnboardingRequestParams {
+  to: string
+  contactName: string
+  agencyName: string
+}
+
+export async function sendOnboardingRequestEmail(p: OnboardingRequestParams) {
+  const html = baseTemplate(`
+    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Hola, ${p.contactName}</p>
+    <h2 style="margin:0 0 20px;color:#111827;font-size:22px;font-weight:700;">Solicitud recibida</h2>
+
+    <div style="background:#f0f9ff;border-left:4px solid #3b82f6;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+      <p style="margin:0;color:#1e40af;font-weight:600;font-size:15px;">${p.agencyName}</p>
+      <p style="margin:6px 0 0;color:#3b82f6;font-size:13px;">Tu solicitud está siendo revisada por nuestro equipo.</p>
+    </div>
+
+    <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
+      Recibimos tu solicitud para unirte a HurryOps. Nuestro equipo la revisará en las próximas <strong>24 horas hábiles</strong> y te notificaremos por este correo cuando sea aprobada.
+    </p>
+
+    <p style="margin:0;color:#6b7280;font-size:13px;">Si tienes dudas, contáctanos en <a href="mailto:hola@hurryops.app" style="color:#3b82f6;">hola@hurryops.app</a></p>
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to: p.to,
+    subject: `Solicitud recibida — ${p.agencyName}`,
+    html,
+  })
+}
+
+// ── Onboarding: notificación al super admin ───────────────────────────────────
+
+interface OnboardingAdminParams {
+  agencyName: string
+  contactName: string
+  email: string
+  phone?: string | null
+  city?: string | null
+  state?: string | null
+  agencyId: string
+}
+
+export async function sendOnboardingAdminEmail(p: OnboardingAdminParams) {
+  const approveUrl = `${BASE_URL}/dashboard/agencies`
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 20px;color:#111827;font-size:20px;font-weight:700;">Nueva solicitud de agencia</h2>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;width:40%;">Agencia</td>
+        <td style="padding:10px 16px;color:#111827;font-size:14px;font-weight:600;">${p.agencyName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #e5e7eb;">Responsable</td>
+        <td style="padding:10px 16px;color:#111827;font-size:14px;border-top:1px solid #e5e7eb;">${p.contactName}</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #e5e7eb;">Email</td>
+        <td style="padding:10px 16px;color:#111827;font-size:14px;border-top:1px solid #e5e7eb;">${p.email}</td>
+      </tr>
+      ${p.phone ? `<tr><td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #e5e7eb;">Teléfono</td><td style="padding:10px 16px;color:#111827;font-size:14px;border-top:1px solid #e5e7eb;">${p.phone}</td></tr>` : ''}
+      ${p.city ? `<tr style="background:#f9fafb;"><td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #e5e7eb;">Ciudad</td><td style="padding:10px 16px;color:#111827;font-size:14px;border-top:1px solid #e5e7eb;">${p.city}${p.state ? ', ' + p.state : ''}</td></tr>` : ''}
+    </table>
+
+    <div style="text-align:center;">
+      <a href="${approveUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;">
+        Revisar solicitud en el panel
+      </a>
+    </div>
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to: 'asandoval13@ucol.mx',
+    subject: `Nueva agencia pendiente — ${p.agencyName}`,
+    html,
+  })
+}
+
+// ── Onboarding: bienvenida (cuando se aprueba) ────────────────────────────────
+
+interface OnboardingApprovedParams {
+  to: string
+  contactName: string
+  agencyName: string
+}
+
+export async function sendOnboardingApprovedEmail(p: OnboardingApprovedParams) {
+  const loginUrl = `${BASE_URL}/login`
+  const html = baseTemplate(`
+    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Hola, ${p.contactName}</p>
+    <h2 style="margin:0 0 20px;color:#111827;font-size:22px;font-weight:700;">¡Tu cuenta está lista!</h2>
+
+    <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+      <p style="margin:0;color:#15803d;font-weight:700;font-size:16px;">✓ ${p.agencyName} aprobada</p>
+      <p style="margin:6px 0 0;color:#16a34a;font-size:13px;">Ya puedes acceder a tu panel de operaciones.</p>
+    </div>
+
+    <p style="margin:0 0 24px;color:#374151;font-size:14px;line-height:1.6;">
+      Tu agencia ha sido activada en HurryOps. Entra con el correo con el que te registraste y comienza a operar.
+    </p>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="${loginUrl}" style="display:inline-block;background:#1e3a5f;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;">
+        Entrar a HurryOps
+      </a>
+    </div>
+
+    <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">
+      Si tienes problemas al acceder, contáctanos en <a href="mailto:hola@hurryops.app" style="color:#3b82f6;">hola@hurryops.app</a>
+    </p>
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to: p.to,
+    subject: `¡Bienvenido a HurryOps! — ${p.agencyName}`,
+    html,
+  })
+}
+
+// ── Onboarding: rechazada ─────────────────────────────────────────────────────
+
+interface OnboardingRejectedParams {
+  to: string
+  contactName: string
+  agencyName: string
+  reason?: string
+}
+
+export async function sendOnboardingRejectedEmail(p: OnboardingRejectedParams) {
+  const html = baseTemplate(`
+    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Hola, ${p.contactName}</p>
+    <h2 style="margin:0 0 20px;color:#111827;font-size:22px;font-weight:700;">Solicitud no aprobada</h2>
+
+    <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
+      Revisamos la solicitud de <strong>${p.agencyName}</strong> y en este momento no podemos aprobarla.
+    </p>
+
+    ${p.reason ? `<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:24px;"><p style="margin:0;color:#b91c1c;font-size:14px;">${p.reason}</p></div>` : ''}
+
+    <p style="margin:0;color:#6b7280;font-size:13px;">
+      Si crees que hay un error o quieres más información, escríbenos a <a href="mailto:hola@hurryops.app" style="color:#3b82f6;">hola@hurryops.app</a>
+    </p>
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to: p.to,
+    subject: `Sobre tu solicitud — ${p.agencyName}`,
+    html,
+  })
+}

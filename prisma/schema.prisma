@@ -8,14 +8,21 @@ datasource db {
 }
 
 model Agency {
-  id        String   @id @default(cuid())
-  name      String
-  code      String   @unique
-  email     String?
-  phone     String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  email       String?
+  phone       String?
+  contactName String?           // Nombre del responsable
+  city        String?
+  state       String?
+  website     String?
+  plan        String   @default("STARTER")  // STARTER | PRO | ENTERPRISE
+  status      String   @default("ACTIVE")   // PENDING | ACTIVE | SUSPENDED
+  active      Boolean  @default(true)
+  notes       String?           // Notas internas del super admin
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   users     User[]
   shipments Shipment[]

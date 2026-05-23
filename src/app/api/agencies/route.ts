@@ -16,7 +16,7 @@ export async function GET() {
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
   const agencies = await prisma.agency.findMany({
-    orderBy: { name: 'asc' },
+    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     include: { _count: { select: { shipments: true, users: true } } },
   })
   return NextResponse.json({ agencies })
