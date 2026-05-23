@@ -52,6 +52,8 @@ model User {
   status         String   @default("ACTIVE")   // PENDING | ACTIVE | INACTIVE
   active         Boolean  @default(true)
   whatsappPhone  String?  @unique              // Número vinculado al agente WA
+  inviteToken    String?  @unique              // Token de invitación pendiente
+  inviteExpiry   DateTime?                     // Expiración del token
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

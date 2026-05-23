@@ -230,6 +230,49 @@ export async function sendStatusUpdateEmail(p: StatusEmailParams) {
   })
 }
 
+// ── Invitación de equipo ──────────────────────────────────────────────────────
+
+interface TeamInviteParams {
+  to:          string
+  name:        string
+  agencyName:  string
+  role:        string
+  inviteUrl:   string
+}
+
+export async function sendTeamInviteEmail(p: TeamInviteParams) {
+  const roleLabel = p.role === 'DRIVER' ? 'Chofer' : 'Operador'
+  const html = baseTemplate(`
+    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Hola, ${p.name}</p>
+    <h2 style="margin:0 0 20px;color:#111827;font-size:22px;font-weight:700;">Te invitaron a HurryOps</h2>
+
+    <div style="background:#f0f9ff;border-left:4px solid #3b82f6;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+      <p style="margin:0;color:#1e40af;font-weight:600;">${p.agencyName}</p>
+      <p style="margin:4px 0 0;color:#3b82f6;font-size:13px;">Te han dado acceso como <strong>${roleLabel}</strong></p>
+    </div>
+
+    <p style="margin:0 0 24px;color:#374151;font-size:14px;line-height:1.6;">
+      Haz clic en el botón para crear tu contraseña y acceder al sistema. El link es válido por <strong>48 horas</strong>.
+    </p>
+
+    <div style="text-align:center;margin-bottom:16px;">
+      <a href="${p.inviteUrl}" style="display:inline-block;background:#1e3a5f;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;">
+        Aceptar invitación
+      </a>
+    </div>
+
+    <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+      Si no esperabas esta invitación, ignora este correo.
+    </p>
+  `)
+  return resend.emails.send({
+    from: FROM,
+    to: p.to,
+    subject: `Invitación a HurryOps — ${p.agencyName}`,
+    html,
+  })
+}
+
 // ── Onboarding: solicitud recibida (al solicitante) ───────────────────────────
 
 interface OnboardingRequestParams {
