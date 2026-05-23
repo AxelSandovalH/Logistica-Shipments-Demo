@@ -157,6 +157,26 @@ model Client {
   agency    Agency   @relation(fields: [agencyId], references: [id])
 }
 
+model ClientOtp {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiry    DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model ClientSession {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiry    DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 model WhatsappSession {
   id        String   @id @default(cuid())
   phone     String   @unique

@@ -230,6 +230,35 @@ export async function sendStatusUpdateEmail(p: StatusEmailParams) {
   })
 }
 
+// ── Portal: código OTP ────────────────────────────────────────────────────────
+
+interface PortalOtpParams {
+  to:    string
+  code:  string
+}
+
+export async function sendPortalOtpEmail(p: PortalOtpParams) {
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 24px;color:#111827;font-size:22px;font-weight:700;">Tu código de acceso</h2>
+
+    <div style="background:#f0f9ff;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Código de verificación</p>
+      <p style="margin:0;font-size:48px;font-weight:900;color:#1e3a5f;letter-spacing:12px;font-family:monospace;">${p.code}</p>
+      <p style="margin:12px 0 0;color:#9ca3af;font-size:12px;">Válido por 15 minutos</p>
+    </div>
+
+    <p style="margin:0;color:#6b7280;font-size:13px;text-align:center;">
+      Si no solicitaste este código, ignora este correo.
+    </p>
+  `)
+  return resend.emails.send({
+    from: FROM,
+    to: p.to,
+    subject: `${p.code} — Tu código de acceso a HurryOps`,
+    html,
+  })
+}
+
 // ── Invitación de equipo ──────────────────────────────────────────────────────
 
 interface TeamInviteParams {
