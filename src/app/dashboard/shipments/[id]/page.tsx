@@ -224,8 +224,80 @@ export default function ShipmentDetailPage() {
           </div>
         </div>
 
-        {/* Timeline */}
+        {/* PoD Card — only when delivered */}
         <div className="space-y-4">
+          {shipment.status === 'DELIVERED' && (() => {
+            const deliveryEvent = [...shipment.events].reverse().find((e: any) => e.status === 'DELIVERED')
+            if (!deliveryEvent) return null
+            const hasEvidence = deliveryEvent.photoUrl || deliveryEvent.signatureUrl
+            return (
+              <div className="card border-2 border-emerald-200 bg-emerald-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800">Comprobante de entrega (PoD)</p>
+                    <p className="text-xs text-emerald-600">
+                      {new Date(deliveryEvent.createdAt).toLocaleString('es-MX', {
+                        day: '2-digit', month: 'long', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                {hasEvidence ? (
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    {deliveryEvent.photoUrl && (
+                      <div>
+                        <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide mb-1">Foto de evidencia</p>
+                        <a href={deliveryEvent.photoUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={deliveryEvent.photoUrl}
+                            alt="Evidencia"
+                            className="rounded-xl w-full object-cover border-2 border-emerald-200 hover:opacity-90 transition-opacity cursor-zoom-in"
+                            style={{ maxHeight: '160px' }}
+                          />
+                        </a>
+                      </div>
+                    )}
+                    {deliveryEvent.signatureUrl && (
+                      <div>
+                        <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide mb-1">Firma del cliente</p>
+                        <a href={deliveryEvent.signatureUrl} target="_blank" rel="noopener noreferrer">
+                          <div className="rounded-xl border-2 border-emerald-200 bg-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-zoom-in" style={{ maxHeight: '160px', minHeight: '80px' }}>
+                            <img
+                              src={deliveryEvent.signatureUrl}
+                              alt="Firma"
+                              className="w-full h-full object-contain p-2"
+                              style={{ maxHeight: '156px' }}
+                            />
+                          </div>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-emerald-600 italic mt-1">Sin foto ni firma registrada en esta entrega.</p>
+                )}
+
+                {deliveryEvent.description && (
+                  <p className="text-xs text-emerald-700 mt-2 bg-emerald-100 rounded-lg px-3 py-2">
+                    {deliveryEvent.description}
+                  </p>
+                )}
+
+                {shipment.assignedDriver && (
+                  <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
+                    <TruckIcon className="w-3 h-3" />
+                    Entregó: <span className="font-semibold">{shipment.assignedDriver.name}</span>
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="w-4 h-4 text-gray-600" />
@@ -250,6 +322,14 @@ export default function ShipmentDetailPage() {
                         <a href={event.photoUrl} target="_blank" className="mt-1 block">
                           <img src={event.photoUrl} alt="Evidencia" className="rounded-lg w-full max-w-[180px] border border-gray-200 hover:opacity-90 transition-opacity" />
                         </a>
+                      )}
+                      {event.signatureUrl && (
+                        <div className="mt-1">
+                          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Firma</p>
+                          <a href={event.signatureUrl} target="_blank">
+                            <img src={event.signatureUrl} alt="Firma" className="rounded-lg border border-gray-200 bg-white hover:opacity-90 transition-opacity" style={{ maxWidth: '160px', maxHeight: '60px', objectFit: 'contain' }} />
+                          </a>
+                        </div>
                       )}
                       <p className="text-xs text-gray-400 mt-0.5">
                         {new Date(event.createdAt).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

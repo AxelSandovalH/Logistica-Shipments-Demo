@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const shipment = await prisma.shipment.findUnique({
     where: { id: params.id },
-    include: { agency: true, origin: true, destination: true, events: { orderBy: { createdAt: 'asc' }, include: { createdBy: true } }, createdBy: true },
+    include: { agency: true, origin: true, destination: true, assignedDriver: { select: { id: true, name: true } }, events: { orderBy: { createdAt: 'asc' }, include: { createdBy: true } }, createdBy: true },
   })
 
   if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
