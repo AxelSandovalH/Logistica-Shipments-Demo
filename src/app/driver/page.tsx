@@ -33,6 +33,8 @@ export default function DriverPage() {
   const [saving, setSaving]                     = useState(false)
   const [gpsPos, setGpsPos]                     = useState<{ lat: number; lng: number } | null>(null)
   const [hasSignature, setHasSignature]         = useState(false)
+  const [failReason, setFailReason]             = useState('')
+  const [failReasonError, setFailReasonError]   = useState(false)
   const interval                                = useRef<NodeJS.Timeout | null>(null)
   const sigCanvas                               = useRef<HTMLCanvasElement>(null)
   const isDrawing                               = useRef(false)
@@ -80,7 +82,7 @@ export default function DriverPage() {
   }
 
   function openModal(s: Shipment) {
-    setAction(s); setNote(''); setPhotoFile(null); setPhotoPreview(null); setHasSignature(false)
+    setAction(s); setNote(''); setPhotoFile(null); setPhotoPreview(null); setHasSignature(false); setFailReason(''); setFailReasonError(false)
     // Clear canvas on next tick (canvas may not be mounted yet)
     setTimeout(() => {
       const c = sigCanvas.current
@@ -155,6 +157,8 @@ export default function DriverPage() {
 
   async function submit(status: 'DELIVERED' | 'FAILED') {
     if (!action) return
+    if (status === 'FAILED' && !failReason) { setFailReasonError(true); return }
+    setFailReasonError(false)
     setSaving(true)
 
     // Upload photo
@@ -180,7 +184,10 @@ export default function DriverPage() {
     await fetch('/api/driver/deliver', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shipmentId: action.id, status, note: note || undefined, photoUrl, signatureUrl }),
+      body: JSON.stringify({
+        shipmentId: action.id, status, signatureUrl, photoUrl,
+        note: status === 'FAILED' ? [failReason, note].filter(Boolean).join(' — ') || undefined : note || undefined,
+      }),
     })
     setSaving(false); setAction(null); load()
   }
@@ -236,6 +243,16 @@ export default function DriverPage() {
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${onRoute ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
                 {onRoute ? 'GPS ON' : 'GPS'}
               </button>
+              <a
+                href="/api/driver/manifest"
+                download
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20"
+                title="Descargar manifiesto"
+              >
+                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </a>
               <button onClick={logout} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20">
                 <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
@@ -526,6 +543,34 @@ export default function DriverPage() {
                 value={note}
                 onChange={e => setNote(e.target.value)}
               />
+            </div>
+
+            {/* ── Motivo de incidencia ─────────────────────────── */}
+            <div className="px-5 pt-2 pb-1">
+              <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                Motivo de incidencia <span className="text-red-400">(requerido si falla)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {['Cliente ausente', 'Dirección incorrecta', 'Domicilio cerrado', 'Rechazó el paquete', 'Paquete dañado', 'Otro'].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => { setFailReason(r); setFailReasonError(false) }}
+                    className={`text-xs py-2.5 px-3 rounded-xl font-semibold text-left transition-all ${
+                      failReason === r
+                        ? 'bg-red-500 text-white'
+                        : failReasonError
+                          ? 'bg-red-50 text-red-400 border border-red-200'
+                          : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {failReasonError && (
+                <p className="text-xs text-red-500 mt-1.5 font-medium">Selecciona un motivo antes de marcar como fallido</p>
+              )}
             </div>
 
             <div className="px-5 pt-3 pb-1 grid grid-cols-2 gap-3">
