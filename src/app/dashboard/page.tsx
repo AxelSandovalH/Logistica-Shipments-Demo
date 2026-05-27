@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/supabase/get-user'
 import { prisma } from '@/lib/prisma'
 import { Package, TruckIcon, CheckCircle, AlertCircle, Clock, ArrowRight, TrendingUp, Building2 } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/utils'
+import { RealtimeBanner } from '@/components/RealtimeBanner'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -68,6 +69,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <RealtimeBanner />
 
       {/* Header */}
       <div>

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Filter, RefreshCw, Trash2, Download } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES } from '@/lib/utils'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 const STATUSES = ['', 'RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED']
 
@@ -35,6 +36,9 @@ export default function ShipmentsPage() {
   }, [page, search, status])
 
   useEffect(() => { fetchShipments() }, [fetchShipments])
+
+  // ── Realtime auto-refresh ─────────────────────────────────────────────────
+  useRealtimeRefresh('Shipment', fetchShipments)
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()

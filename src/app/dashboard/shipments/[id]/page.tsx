@@ -6,6 +6,7 @@ import {
   TruckIcon, AlertCircle, RotateCcw, ExternalLink, Printer, Pencil, X, UserCheck,
 } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES, SERVICE_TYPES, getStatusLabel } from '@/lib/utils'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
   RECEIVED: Package, IN_TRANSIT: TruckIcon, OUT_FOR_DELIVERY: MapPin,
@@ -52,6 +53,10 @@ export default function ShipmentDetailPage() {
   }
 
   useEffect(() => { fetchShipment() }, [id])
+
+  // ── Realtime auto-refresh ─────────────────────────────────────────────────
+  useRealtimeRefresh('Shipment', fetchShipment)
+  useRealtimeRefresh('TrackingEvent', fetchShipment)
   useEffect(() => {
     fetch('/api/drivers').then(r => r.json()).then(d => setDrivers(d.drivers ?? []))
   }, [])
