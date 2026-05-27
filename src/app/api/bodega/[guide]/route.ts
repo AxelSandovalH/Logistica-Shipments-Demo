@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendStatusUpdateEmail } from '@/lib/email'
+import { sendPushToDriver } from '@/lib/push'
 
 const DESCRIPTIONS: Record<string, string> = {
   RECEIVED:         'Recibido en bodega EE.UU.',
@@ -100,6 +101,26 @@ export async function POST(req: NextRequest, { params }: { params: { guide: stri
       },
     }),
   ])
+
+  // Push al chofer asignado cuando el paquete sale de bodega hacia él
+  if (status === 'OUT_FOR_DELIVERY' && shipment.assignedDriverId) {
+    const driver = await prisma.user.findUnique({
+      where:  { id: shipment.assignedDriverId },
+      select: { pushSubscription: true },
+    })
+    if (driver?.pushSubscription) {
+      sendPushToDriver(driver.pushSubscription, {
+        title: '🚚 Paquete listo para entregar',
+        body:  `Guía ${shipment.guideNumber} · ${shipment.recipientName} ya está en tu ruta`,
+        url:   '/driver',
+        tag:   'ready',
+      }).catch(async (err) => {
+        if (err?.statusCode === 410) {
+          await prisma.user.update({ where: { id: shipment.assignedDriverId! }, data: { pushSubscription: undefined } })
+        }
+      })
+    }
+  }
 
   // Correo al remitente siempre (si tiene email)
   if (shipment.senderEmail) {

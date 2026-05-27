@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/supabase/get-user'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { sendPushToDriver } from '@/lib/push'
 
 const UpdateStatusSchema = z.object({
   status: z.enum(['RECEIVED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED']),
@@ -89,8 +90,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     if (user.role !== 'ADMIN' && shipment.agencyId !== user.agencyId) return NextResponse.json({ error: 'Sin acceso' }, { status: 403 })
 
-    // Auto-cambio a OUT_FOR_DELIVERY solo si el envío ya pasó por bodega
-    // (tuvo al menos un evento IN_TRANSIT = pasó de USA a MX y está listo para repartir)
     const wentThroughTransit = shipment.events.some(e => e.status === 'IN_TRANSIT')
     const shouldUpdateStatus =
       parsed.data.assignedDriverId !== null &&
@@ -114,6 +113,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           createdById: user.id,
         },
       })
+    }
+
+    // Push notification to driver
+    if (parsed.data.assignedDriverId) {
+      const driver = await prisma.user.findUnique({
+        where: { id: parsed.data.assignedDriverId },
+        select: { pushSubscription: true, name: true },
+      })
+      if (driver?.pushSubscription) {
+        sendPushToDriver(driver.pushSubscription, {
+          title: '📦 Nuevo paquete asignado',
+          body:  `Guía ${shipment.guideNumber} · ${shipment.recipientName}`,
+          url:   '/driver',
+          tag:   'assignment',
+        }).catch(async (err) => {
+          if (err?.statusCode === 410) {
+            await prisma.user.update({ where: { id: parsed.data.assignedDriverId! }, data: { pushSubscription: undefined } })
+          }
+        })
+      }
     }
 
     return NextResponse.json({ shipment: updated })
