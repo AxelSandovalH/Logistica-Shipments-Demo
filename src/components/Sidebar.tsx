@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Package, LayoutDashboard, List, Building2, Users, LogOut, TruckIcon, BookUser, X, Warehouse, BarChart2, UserCog } from 'lucide-react'
+import { Package, LayoutDashboard, List, Building2, Users, LogOut, TruckIcon, BookUser, X, Warehouse, BarChart2, UserCog, TrendingUp } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +22,7 @@ const adminLinks = [
   { href: '/dashboard/warehouses', label: 'Bodegas', icon: Warehouse },
   { href: '/dashboard/users', label: 'Usuarios', icon: Users },
   { href: '/dashboard/team', label: 'Equipo', icon: UserCog },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: TrendingUp },
   { href: '/dashboard/reports', label: 'Reportes', icon: BarChart2 },
 ]
 
@@ -31,6 +32,7 @@ const agencyLinks = [
   { href: '/dashboard/shipments/new', label: 'Nuevo Envío', icon: Package },
   { href: '/dashboard/clients', label: 'Clientes', icon: BookUser },
   { href: '/dashboard/team', label: 'Equipo', icon: UserCog },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: TrendingUp },
   { href: '/dashboard/reports', label: 'Reportes', icon: BarChart2 },
 ]
 
