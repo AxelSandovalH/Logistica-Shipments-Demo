@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   if (user.role !== 'DRIVER') return NextResponse.json({ error: 'Solo choferes' }, { status: 403 })
 
-  const { shipmentId, status, note, photoUrl } = await req.json()
+  const { shipmentId, status, note, photoUrl, signatureUrl } = await req.json()
   if (!shipmentId || !status) return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 })
   if (!['DELIVERED', 'FAILED'].includes(status)) return NextResponse.json({ error: 'Estado inválido' }, { status: 400 })
 
@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
         status,
         description: note || DESCRIPTIONS[status],
         createdById: user.id,
-        photoUrl:    photoUrl || null,
+        photoUrl:     photoUrl     || null,
+        signatureUrl: signatureUrl || null,
       },
     }),
   ])

@@ -32,7 +32,10 @@ export default function DriverPage() {
   const [photoPreview, setPhotoPreview]         = useState<string | null>(null)
   const [saving, setSaving]                     = useState(false)
   const [gpsPos, setGpsPos]                     = useState<{ lat: number; lng: number } | null>(null)
+  const [hasSignature, setHasSignature]         = useState(false)
   const interval                                = useRef<NodeJS.Timeout | null>(null)
+  const sigCanvas                               = useRef<HTMLCanvasElement>(null)
+  const isDrawing                               = useRef(false)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => {
@@ -77,7 +80,71 @@ export default function DriverPage() {
   }
 
   function openModal(s: Shipment) {
-    setAction(s); setNote(''); setPhotoFile(null); setPhotoPreview(null)
+    setAction(s); setNote(''); setPhotoFile(null); setPhotoPreview(null); setHasSignature(false)
+    // Clear canvas on next tick (canvas may not be mounted yet)
+    setTimeout(() => {
+      const c = sigCanvas.current
+      if (c) { const ctx = c.getContext('2d')!; ctx.clearRect(0, 0, c.width, c.height) }
+    }, 50)
+  }
+
+  // ── Signature pad helpers ─────────────────────────────────────────────────
+  function sigPos(e: React.TouchEvent | React.MouseEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width  / rect.width
+    const scaleY = canvas.height / rect.height
+    if ('touches' in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top)  * scaleY,
+      }
+    }
+    return {
+      x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as React.MouseEvent).clientY - rect.top)  * scaleY,
+    }
+  }
+
+  function sigStart(e: React.TouchEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    const c = sigCanvas.current; if (!c) return
+    isDrawing.current = true
+    const ctx = c.getContext('2d')!
+    const { x, y } = sigPos(e, c)
+    ctx.beginPath(); ctx.moveTo(x, y)
+  }
+
+  function sigMove(e: React.TouchEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    if (!isDrawing.current) return
+    const c = sigCanvas.current; if (!c) return
+    const ctx = c.getContext('2d')!
+    ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#1e3a5f'
+    const { x, y } = sigPos(e, c)
+    ctx.lineTo(x, y); ctx.stroke()
+    setHasSignature(true)
+  }
+
+  function sigEnd() { isDrawing.current = false }
+
+  function clearSignature() {
+    const c = sigCanvas.current; if (!c) return
+    c.getContext('2d')!.clearRect(0, 0, c.width, c.height)
+    setHasSignature(false)
+  }
+
+  async function sigToBlob(): Promise<Blob | null> {
+    return new Promise(resolve => {
+      const c = sigCanvas.current
+      if (!c) return resolve(null)
+      // Flat white background
+      const offscreen = document.createElement('canvas')
+      offscreen.width = c.width; offscreen.height = c.height
+      const ctx = offscreen.getContext('2d')!
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, offscreen.width, offscreen.height)
+      ctx.drawImage(c, 0, 0)
+      offscreen.toBlob(b => resolve(b), 'image/png')
+    })
   }
 
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -89,16 +156,31 @@ export default function DriverPage() {
   async function submit(status: 'DELIVERED' | 'FAILED') {
     if (!action) return
     setSaving(true)
+
+    // Upload photo
     let photoUrl: string | undefined
     if (photoFile) {
       const fd = new FormData(); fd.append('file', photoFile)
       const up = await fetch('/api/bodega/upload', { method: 'POST', body: fd })
       if (up.ok) photoUrl = (await up.json()).url
     }
+
+    // Upload signature (only for DELIVERED)
+    let signatureUrl: string | undefined
+    if (status === 'DELIVERED' && hasSignature) {
+      const blob = await sigToBlob()
+      if (blob) {
+        const fd = new FormData()
+        fd.append('file', new File([blob], 'firma.png', { type: 'image/png' }))
+        const up = await fetch('/api/bodega/upload', { method: 'POST', body: fd })
+        if (up.ok) signatureUrl = (await up.json()).url
+      }
+    }
+
     await fetch('/api/driver/deliver', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shipmentId: action.id, status, note: note || undefined, photoUrl }),
+      body: JSON.stringify({ shipmentId: action.id, status, note: note || undefined, photoUrl, signatureUrl }),
     })
     setSaving(false); setAction(null); load()
   }
@@ -400,6 +482,44 @@ export default function DriverPage() {
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
                 </label>
               )}
+              {/* ── Signature pad ────────────────────────────────── */}
+              <div className="rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden bg-white">
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <p className="text-sm font-semibold text-gray-600">Firma del cliente</p>
+                    {hasSignature
+                      ? <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">✓ Firmado</span>
+                      : <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">Requerido</span>
+                    }
+                  </div>
+                  {hasSignature && (
+                    <button onClick={clearSignature} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium">
+                      Borrar
+                    </button>
+                  )}
+                </div>
+                <canvas
+                  ref={sigCanvas}
+                  width={600}
+                  height={180}
+                  className="w-full touch-none cursor-crosshair"
+                  style={{ height: '120px', background: hasSignature ? '#fff' : '#fafafa' }}
+                  onMouseDown={sigStart}
+                  onMouseMove={sigMove}
+                  onMouseUp={sigEnd}
+                  onMouseLeave={sigEnd}
+                  onTouchStart={sigStart}
+                  onTouchMove={sigMove}
+                  onTouchEnd={sigEnd}
+                />
+                {!hasSignature && (
+                  <p className="text-center text-xs text-gray-300 pb-2 -mt-1">Pide al cliente que firme aquí</p>
+                )}
+              </div>
+
               <input
                 className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 placeholder="Nota opcional — ej: deje con portero"
@@ -416,7 +536,7 @@ export default function DriverPage() {
                 </svg>
                 Fallido
               </button>
-              <button onClick={() => submit('DELIVERED')} disabled={saving}
+              <button onClick={() => submit('DELIVERED')} disabled={saving || !hasSignature}
                 className="py-4 rounded-2xl bg-emerald-500 text-white font-black text-base active:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving
                   ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

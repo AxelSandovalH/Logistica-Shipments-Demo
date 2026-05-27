@@ -188,9 +188,10 @@ model TrackingEvent {
   id          String   @id @default(cuid())
   status      String
   description String
-  location    String?
-  photoUrl    String?
-  createdAt   DateTime @default(now())
+  location     String?
+  photoUrl     String?
+  signatureUrl String?
+  createdAt    DateTime @default(now())
 
   shipmentId  String
   shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)

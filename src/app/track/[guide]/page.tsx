@@ -190,6 +190,19 @@ export default async function TrackingPage({ params }: { params: { guide: string
                             />
                           </a>
                         )}
+                        {(event as any).signatureUrl && (
+                          <div className="mt-2">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Firma del cliente</p>
+                            <a href={(event as any).signatureUrl} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={(event as any).signatureUrl}
+                                alt="Firma"
+                                className="rounded-lg border border-gray-200 bg-white hover:opacity-90 transition-opacity"
+                                style={{ maxWidth: '180px', maxHeight: '80px', objectFit: 'contain' }}
+                              />
+                            </a>
+                          </div>
+                        )}
                         <p className="text-xs text-gray-400 mt-0.5">
                           {new Date(event.createdAt).toLocaleString('es-MX', {
                             day: '2-digit', month: 'short', year: 'numeric',
