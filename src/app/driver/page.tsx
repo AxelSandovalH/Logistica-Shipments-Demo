@@ -35,6 +35,9 @@ export default function DriverPage() {
   const [hasSignature, setHasSignature]         = useState(false)
   const [failReason, setFailReason]             = useState('')
   const [failReasonError, setFailReasonError]   = useState(false)
+  const [optimizing, setOptimizing]             = useState(false)
+  const [routeOptimized, setRouteOptimized]     = useState(false)
+  const [totalKm, setTotalKm]                   = useState<number | null>(null)
   const interval                                = useRef<NodeJS.Timeout | null>(null)
   const sigCanvas                               = useRef<HTMLCanvasElement>(null)
   const isDrawing                               = useRef(false)
@@ -225,6 +228,20 @@ export default function DriverPage() {
     setSaving(false); setAction(null); load()
   }
 
+  async function optimizeRoute() {
+    setOptimizing(true)
+    const params = new URLSearchParams()
+    if (gpsPos) { params.set('lat', String(gpsPos.lat)); params.set('lng', String(gpsPos.lng)) }
+    const res = await fetch(`/api/driver/optimize-route?${params}`)
+    if (res.ok) {
+      const d = await res.json()
+      setShipments(d.shipments)
+      setRouteOptimized(true)
+      setTotalKm(d.totalKm)
+    }
+    setOptimizing(false)
+  }
+
   async function logout() {
     if (onRoute) toggleRoute()
     await createClient().auth.signOut()
@@ -276,6 +293,23 @@ export default function DriverPage() {
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${onRoute ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
                 {onRoute ? 'GPS ON' : 'GPS'}
               </button>
+              {shipments.length > 1 && (
+                <button
+                  onClick={optimizeRoute}
+                  disabled={optimizing}
+                  title="Optimizar ruta"
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                    routeOptimized ? 'bg-emerald-500' : 'bg-white/10 active:bg-white/20'
+                  }`}
+                >
+                  {optimizing
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                  }
+                </button>
+              )}
               <a
                 href="/api/driver/manifest"
                 download
@@ -432,9 +466,19 @@ export default function DriverPage() {
             {/* ── SIGUIENTES ───────────────────────────────────────────── */}
             {pending.length > 0 && (
               <div className="px-4 pt-5">
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                  Siguientes — {pending.length}
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                    Siguientes — {pending.length}
+                  </p>
+                  {routeOptimized && totalKm !== null && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Ruta optimizada · ~{totalKm} km
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {pending.map((s, i) => (
                     <div key={s.id} className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 6px rgba(0,0,0,.06)' }}>
@@ -447,6 +491,9 @@ export default function DriverPage() {
                           <p className="text-xs text-gray-400 truncate">
                             {[s.destination?.street, s.destination?.city].filter(Boolean).join(', ')}
                           </p>
+                          {(s as any).distKm > 0 && (
+                            <p className="text-[10px] text-blue-500 font-semibold mt-0.5">~{(s as any).distKm} km del anterior</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {s.recipientPhone && (
