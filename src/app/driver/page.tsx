@@ -217,11 +217,23 @@ export default function DriverPage() {
       }
     }
 
+    // Capturar GPS en el momento exacto de la entrega
+    let deliveryLat: number | undefined
+    let deliveryLng: number | undefined
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 })
+      )
+      deliveryLat = pos.coords.latitude
+      deliveryLng = pos.coords.longitude
+    } catch { /* GPS no disponible, continúa sin coordenadas */ }
+
     await fetch('/api/driver/deliver', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         shipmentId: action.id, status, signatureUrl, photoUrl,
+        lat: deliveryLat, lng: deliveryLng,
         note: status === 'FAILED' ? [failReason, note].filter(Boolean).join(' — ') || undefined : note || undefined,
       }),
     })

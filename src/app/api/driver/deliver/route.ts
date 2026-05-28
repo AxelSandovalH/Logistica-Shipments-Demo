@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   if (user.role !== 'DRIVER') return NextResponse.json({ error: 'Solo choferes' }, { status: 403 })
 
-  const { shipmentId, status, note, photoUrl, signatureUrl } = await req.json()
+  const { shipmentId, status, note, photoUrl, signatureUrl, lat, lng } = await req.json()
   if (!shipmentId || !status) return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 })
   if (!['DELIVERED', 'FAILED'].includes(status)) return NextResponse.json({ error: 'Estado inválido' }, { status: 400 })
 
@@ -24,11 +24,15 @@ export async function POST(req: NextRequest) {
     FAILED:    'Intento de entrega fallido',
   }
 
+  // FAILED → regresa a IN_TRANSIT (EN BODEGA) para reprogramar
+  const shipmentStatus = status === 'FAILED' ? 'IN_TRANSIT' : status
+  const gpsLocation    = (lat && lng) ? `${lat},${lng}` : null
+
   await prisma.$transaction([
     prisma.shipment.update({
       where: { id: shipmentId },
       data: {
-        status,
+        status:      shipmentStatus,
         deliveredAt: status === 'DELIVERED' ? new Date() : undefined,
       },
     }),
@@ -36,10 +40,11 @@ export async function POST(req: NextRequest) {
       data: {
         shipmentId,
         status,
-        description: note || DESCRIPTIONS[status],
-        createdById: user.id,
+        description:  note || DESCRIPTIONS[status],
+        createdById:  user.id,
         photoUrl:     photoUrl     || null,
         signatureUrl: signatureUrl || null,
+        location:     gpsLocation,
       },
     }),
   ])
