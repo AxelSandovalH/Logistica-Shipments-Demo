@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 export const resend = new Resend(process.env.RESEND_API_KEY)
 
-const FROM = 'HurryOps <onboarding@resend.dev>'
+const FROM = 'HurryOps <noreply@hurryops.app>'
 const BASE_URL = 'https://hurryops.app'
 
 const STATUS_LABELS: Record<string, string> = {
