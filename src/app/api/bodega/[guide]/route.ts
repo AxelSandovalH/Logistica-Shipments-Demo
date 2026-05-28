@@ -13,11 +13,11 @@ const DESCRIPTIONS: Record<string, string> = {
   RETURNED:         'Paquete devuelto a origen',
 }
 
-// Flujo real: Bodega USA → tránsito → Bodega MX → chofer (asignado desde dashboard)
+// Flujo: Bodega USA escanea → IN_TRANSIT. El chofer se asigna desde el dashboard.
 const BODEGA_TRANSITIONS: Record<string, string[]> = {
-  RECEIVED:         ['IN_TRANSIT'],                   // Bodega USA: enviar a México
-  IN_TRANSIT:       ['RECEIVED'],                     // Bodega MX: confirmar llegada
-  FAILED:           ['OUT_FOR_DELIVERY', 'RETURNED'], // Reintento o devolución
+  RECEIVED: ['IN_TRANSIT'], // Bodega USA: "Enviar a México"
+  // IN_TRANSIT → admin asigna chofer desde dashboard → OUT_FOR_DELIVERY
+  // FAILED ya no existe en BD (revierte a IN_TRANSIT automáticamente)
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { guide: string } }) {

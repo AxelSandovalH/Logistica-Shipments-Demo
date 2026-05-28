@@ -389,8 +389,20 @@ export default function BodegaPage() {
             {error && <p className="text-sm text-red-600 text-center">{error}</p>}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm p-4 text-center text-gray-400 text-sm">
-            Este envío ya está en su estado final
+          <div className="bg-white rounded-2xl shadow-sm p-4 text-center text-sm space-y-1">
+            {shipment.status === 'IN_TRANSIT' ? (
+              <>
+                <p className="font-semibold text-blue-700">Paquete recibido en México ✓</p>
+                <p className="text-gray-400">El administrador debe asignar un chofer desde el dashboard para continuar.</p>
+              </>
+            ) : shipment.status === 'OUT_FOR_DELIVERY' ? (
+              <>
+                <p className="font-semibold text-orange-600">En ruta de entrega</p>
+                <p className="text-gray-400">El chofer ya tiene este paquete asignado.</p>
+              </>
+            ) : (
+              <p className="text-gray-400">Este envío ya está en su estado final.</p>
+            )}
           </div>
         )}
 
