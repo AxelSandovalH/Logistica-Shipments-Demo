@@ -40,11 +40,15 @@ export async function GET(req: NextRequest) {
   const shipments = await prisma.shipment.findMany({
     where: {
       assignedDriverId: driverId,
-      status: { in: ['OUT_FOR_DELIVERY', 'FAILED'] },
+      status: 'OUT_FOR_DELIVERY',
     },
     include: { destination: true, agency: { select: { name: true } } },
     orderBy: { createdAt: 'asc' },
   })
+
+  if (shipments.length === 0) {
+    return NextResponse.json({ error: 'No hay envíos en ruta para generar el manifiesto' }, { status: 404 })
+  }
 
   // ── Build PDF ─────────────────────────────────────────────────────────────
   const doc    = await PDFDocument.create()
