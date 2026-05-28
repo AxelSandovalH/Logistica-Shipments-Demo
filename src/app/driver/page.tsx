@@ -240,6 +240,23 @@ export default function DriverPage() {
     setSaving(false); setAction(null); load()
   }
 
+  async function downloadManifest() {
+    const res = await fetch('/api/driver/manifest')
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error ?? 'No hay envíos en ruta para generar el manifiesto')
+      return
+    }
+    const blob = await res.blob()
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    const cd   = res.headers.get('Content-Disposition') ?? ''
+    a.download = cd.match(/filename="(.+)"/)?.[1] ?? 'manifiesto.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function optimizeRoute() {
     setOptimizing(true)
     const params = new URLSearchParams()
@@ -322,16 +339,15 @@ export default function DriverPage() {
                   }
                 </button>
               )}
-              <a
-                href="/api/driver/manifest"
-                download
+              <button
+                onClick={downloadManifest}
                 className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20"
                 title="Descargar manifiesto"
               >
                 <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-              </a>
+              </button>
               <button onClick={logout} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20">
                 <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
