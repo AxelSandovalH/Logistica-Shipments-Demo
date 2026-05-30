@@ -5,16 +5,11 @@ import { generateGuideNumber } from '@/lib/utils'
 import { sendGuideCreatedEmail } from '@/lib/email'
 import { z } from 'zod'
 
-// ── Shared sender + package fields ───────────────────────────────────────────
+// ── Shared sender fields (apply to all shipments in a batch) ─────────────────
 const SenderSchema = z.object({
   senderName:    z.string().min(1),
   senderPhone:   z.string().optional(),
   senderEmail:   z.string().email().optional().or(z.literal('')),
-  weight:        z.coerce.number().positive().optional(),
-  packageType:   z.enum(['PACKAGE', 'ENVELOPE', 'PALLET']).default('PACKAGE'),
-  description:   z.string().optional(),
-  pieces:        z.coerce.number().int().positive().default(1),
-  declaredValue: z.coerce.number().positive().optional(),
   serviceType:   z.enum(['STANDARD', 'EXPRESS', 'ECONOMY']).default('STANDARD'),
   notes:         z.string().optional(),
   agencyId:      z.string().optional(),
@@ -25,12 +20,19 @@ const SenderSchema = z.object({
   originZip:     z.string().optional(),
 })
 
-// ── Per-recipient fields ──────────────────────────────────────────────────────
+// ── Per-recipient fields (each shipment can have its own package details) ─────
 const RecipientSchema = z.object({
   recipientName:   z.string().min(1),
   recipientPhone:  z.string().optional(),
   recipientEmail:  z.string().email().optional().or(z.literal('')),
   notifyRecipient: z.boolean().default(false),
+  // package details — per recipient so each shipment can differ
+  weight:          z.coerce.number().positive().optional(),
+  packageType:     z.enum(['PACKAGE', 'ENVELOPE', 'PALLET']).default('PACKAGE'),
+  pieces:          z.coerce.number().int().positive().default(1),
+  description:     z.string().optional(),
+  declaredValue:   z.coerce.number().positive().optional(),
+  // destination address
   destStreet:      z.string().min(1),
   destColonia:     z.string().optional(),
   destCity:        z.string().min(1),
@@ -80,11 +82,11 @@ async function createOne(
       recipientName:   recipient.recipientName,
       recipientPhone:  recipient.recipientPhone,
       recipientEmail:  recipient.recipientEmail || null,
-      weight:          sender.weight,
-      packageType:     sender.packageType,
-      description:     sender.description,
-      pieces:          sender.pieces,
-      declaredValue:   sender.declaredValue,
+      weight:          recipient.weight,
+      packageType:     recipient.packageType,
+      description:     recipient.description,
+      pieces:          recipient.pieces,
+      declaredValue:   recipient.declaredValue,
       serviceType:     sender.serviceType,
       notes:           sender.notes,
       notifyRecipient: recipient.notifyRecipient,
@@ -105,8 +107,8 @@ async function createOne(
       senderName: sender.senderName, recipientName: recipient.recipientName,
       recipientPhone: recipient.recipientPhone, destCity: recipient.destCity,
       destState: recipient.destState, agencyName,
-      weight: sender.weight, pieces: sender.pieces,
-      description: sender.description, serviceType: sender.serviceType,
+      weight: recipient.weight, pieces: recipient.pieces,
+      description: recipient.description, serviceType: sender.serviceType,
     }).catch(err => console.error('[email] guía creada (remitente):', err))
   }
 
@@ -117,8 +119,8 @@ async function createOne(
       senderName: sender.senderName, recipientName: recipient.recipientName,
       recipientPhone: recipient.recipientPhone, destCity: recipient.destCity,
       destState: recipient.destState, agencyName,
-      weight: sender.weight, pieces: sender.pieces,
-      description: sender.description, serviceType: sender.serviceType,
+      weight: recipient.weight, pieces: recipient.pieces,
+      description: recipient.description, serviceType: sender.serviceType,
     }).catch(err => console.error('[email] guía creada (destinatario):', err))
   }
 
@@ -183,12 +185,14 @@ export async function POST(req: NextRequest) {
     : null
 
   const { recipientName, recipientPhone, recipientEmail, notifyRecipient,
+          weight, packageType, pieces, description, declaredValue,
           destStreet, destColonia, destCity, destState, destZip, destReferences,
           ...senderData } = data
 
   const shipment = await createOne(
     senderData,
     { recipientName, recipientPhone, recipientEmail, notifyRecipient,
+      weight, packageType, pieces, description, declaredValue,
       destStreet, destColonia, destCity, destState, destZip, destReferences },
     agencyId, agency.code, agency.name, user.id, origin?.id ?? null,
   )

@@ -108,7 +108,8 @@ async function runTool(name: string, input: any): Promise<string> {
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const msg  = body.data
-  if (!msg || msg.type !== 'chat') return NextResponse.json({ ok: true })
+  // Ignorar mensajes salientes (fromMe) y no-texto para evitar bucles
+  if (!msg || msg.type !== 'chat' || msg.fromMe) return NextResponse.json({ ok: true })
 
   const rawPhone = msg.from?.replace('@c.us', '').replace(/\D/g, '') ?? ''
   const text     = msg.body?.trim()

@@ -23,6 +23,7 @@ const F = ({ label, children, span = 1 }: { label: string; children: React.React
 const emptyRecipient = () => ({
   recipientName: '', recipientPhone: '', recipientEmail: '',
   notifyRecipient: false,
+  packageType: 'PACKAGE', weight: '', pieces: '1', description: '', declaredValue: '',
   destStreet: '', destColonia: '', destCity: '', destState: '', destZip: '', destReferences: '',
 })
 
@@ -36,13 +37,12 @@ export default function NewShipmentPage() {
   const [clientSearch, setClientSearch] = useState('')
   const [agencies, setAgencies] = useState<any[]>([])
 
-  // Sender + package (shared for all recipients)
+  // Sender + service (shared for all recipients)
   const [form, setForm] = useState({
     agencyId: '',
     senderName: '', senderPhone: '', senderEmail: '',
     originStreet: '', originCity: '', originState: '', originZip: '',
-    weight: '', packageType: 'PACKAGE', description: '', pieces: '1',
-    declaredValue: '', serviceType: 'STANDARD', notes: '',
+    serviceType: 'STANDARD', notes: '',
   })
 
   // Multiple recipients
@@ -202,35 +202,24 @@ export default function NewShipmentPage() {
             </div>
           </div>
 
-          {/* Paquete */}
+          {/* Servicio (compartido) */}
           <div className="card !p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center">
                 <Package className="w-3.5 h-3.5 text-purple-600" />
               </div>
-              <h2 className="text-sm font-semibold text-gray-800">Paquete <span className="text-gray-400 font-normal text-xs">(aplica a todos los destinatarios)</span></h2>
+              <h2 className="text-sm font-semibold text-gray-800">Servicio <span className="text-gray-400 font-normal text-xs">(aplica a todos)</span></h2>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <F label="Tipo">
-                <select className="input !py-1.5 !text-sm" value={form.packageType} onChange={e => u('packageType', e.target.value)}>
-                  <option value="PACKAGE">Paquete</option>
-                  <option value="ENVELOPE">Sobre</option>
-                  <option value="PALLET">Tarima</option>
-                </select>
-              </F>
-              <F label="Servicio">
+              <F label="Tipo de servicio" span={2}>
                 <select className="input !py-1.5 !text-sm" value={form.serviceType} onChange={e => u('serviceType', e.target.value)}>
                   <option value="STANDARD">Estándar</option>
                   <option value="EXPRESS">Express</option>
                   <option value="ECONOMY">Económico</option>
                 </select>
               </F>
-              <F label="Peso (kg)">{inp('weight', { type: 'number', step: '0.1', min: '0' })}</F>
-              <F label="Piezas por dest.">{inp('pieces', { type: 'number', min: '1' })}</F>
-              <F label="Valor declarado (USD)" span={2}>{inp('declaredValue', { type: 'number', step: '0.01', min: '0' })}</F>
-              <F label="Descripción del contenido" span={2}>{inp('description')}</F>
               <F label="Notas internas" span={2}>
-                <textarea className="input !py-1.5 !text-sm resize-none" rows={2} value={form.notes} onChange={e => u('notes', e.target.value)} autoComplete="off" />
+                <textarea className="input !py-1.5 !text-sm resize-none" rows={3} value={form.notes} onChange={e => u('notes', e.target.value)} autoComplete="off" />
               </F>
             </div>
           </div>
@@ -317,6 +306,37 @@ export default function NewShipmentPage() {
                     <input className="input !py-1.5 !text-sm" placeholder="Entre calles, color de casa..." value={rec.destReferences}
                       onChange={e => updateRecipient(idx, 'destReferences', e.target.value)} autoComplete="off" />
                   </F>
+
+                  {/* Paquete — específico por destinatario */}
+                  <div className="col-span-2 border-t border-gray-100 pt-2.5 mt-0.5">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Detalles del paquete</p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <F label="Tipo">
+                        <select className="input !py-1.5 !text-sm" value={rec.packageType}
+                          onChange={e => updateRecipient(idx, 'packageType', e.target.value)}>
+                          <option value="PACKAGE">Paquete</option>
+                          <option value="ENVELOPE">Sobre</option>
+                          <option value="PALLET">Tarima</option>
+                        </select>
+                      </F>
+                      <F label="Piezas">
+                        <input className="input !py-1.5 !text-sm" type="number" min="1" value={rec.pieces}
+                          onChange={e => updateRecipient(idx, 'pieces', e.target.value)} autoComplete="off" />
+                      </F>
+                      <F label="Peso (kg)">
+                        <input className="input !py-1.5 !text-sm" type="number" step="0.1" min="0" value={rec.weight}
+                          onChange={e => updateRecipient(idx, 'weight', e.target.value)} autoComplete="off" />
+                      </F>
+                      <F label="Valor declarado (USD)">
+                        <input className="input !py-1.5 !text-sm" type="number" step="0.01" min="0" value={rec.declaredValue}
+                          onChange={e => updateRecipient(idx, 'declaredValue', e.target.value)} autoComplete="off" />
+                      </F>
+                      <F label="Descripción del contenido" span={2}>
+                        <input className="input !py-1.5 !text-sm" value={rec.description}
+                          onChange={e => updateRecipient(idx, 'description', e.target.value)} autoComplete="off" />
+                      </F>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
