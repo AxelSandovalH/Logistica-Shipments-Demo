@@ -179,10 +179,11 @@ model ClientSession {
 }
 
 model WhatsappSession {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  messages  Json     @default("[]")
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  phone      String   @unique
+  messages   Json     @default("[]")
+  lastMsgId  String?
+  updatedAt  DateTime @updatedAt
 }
 
 model TrackingEvent {

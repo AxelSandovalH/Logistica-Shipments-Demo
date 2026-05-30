@@ -113,14 +113,16 @@ export async function POST(req: NextRequest) {
 
   const rawPhone = msg.from?.replace('@c.us', '').replace(/\D/g, '') ?? ''
   const text     = msg.body?.trim()
+  const msgId    = msg.id ?? null
   if (!rawPhone || !text) return NextResponse.json({ ok: true })
 
-  // Historial de conversación por número
+  // ── Deduplicación: ignorar si ya procesamos este mensaje (reintentos UltraMsg) ──
   const session = await prisma.whatsappSession.upsert({
     where:  { phone: rawPhone },
-    create: { phone: rawPhone, messages: [] },
+    create: { phone: rawPhone, messages: [], lastMsgId: null },
     update: {},
   })
+  if (msgId && session.lastMsgId === msgId) return NextResponse.json({ ok: true })
 
   const history: Anthropic.MessageParam[] = (session.messages as any[]) ?? []
   history.push({ role: 'user', content: text })
@@ -177,10 +179,7 @@ Reglas importantes:
         results.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
       loopMessages.push({ role: 'user', content: results })
-      // Resetear conversación después de registrar para la próxima solicitud
-      loopMessages = loopMessages.filter(m =>
-        !(Array.isArray(m.content) && (m.content as any[]).some((b: any) => b.type === 'tool_use'))
-      )
+      // Continúa el loop para que Claude genere la respuesta de confirmación
       continue
     }
 
@@ -196,7 +195,7 @@ Reglas importantes:
 
   await prisma.whatsappSession.update({
     where: { phone: rawPhone },
-    data:  { messages: toSave as any },
+    data:  { messages: toSave as any, ...(msgId && { lastMsgId: msgId }) },
   })
 
   if (finalText) await sendWhatsapp(msg.from, finalText)
