@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { STATUS_LABELS, getStatusLabel } from '@/lib/utils'
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
+  PENDING: Clock,
   RECEIVED: Package,
   IN_TRANSIT: TruckIcon,
   OUT_FOR_DELIVERY: MapPin,
@@ -14,6 +15,7 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 }
 
 const STATUS_BG: Record<string, string> = {
+  PENDING: 'bg-purple-600',
   RECEIVED: 'bg-blue-500',
   IN_TRANSIT: 'bg-yellow-500',
   OUT_FOR_DELIVERY: 'bg-orange-500',
@@ -23,6 +25,7 @@ const STATUS_BG: Record<string, string> = {
 }
 
 const PROGRESS: Record<string, number> = {
+  PENDING: 5,
   RECEIVED: 20,
   IN_TRANSIT: 50,
   OUT_FOR_DELIVERY: 80,
