@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Filter, RefreshCw, Trash2, Download } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Trash2, Download, Printer, ChevronDown, ChevronRight } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES } from '@/lib/utils'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
@@ -17,6 +17,7 @@ export default function ShipmentsPage() {
   const [status, setStatus] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [collapsedSenders, setCollapsedSenders] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => setIsAdmin(d.role === 'ADMIN'))
@@ -110,7 +111,7 @@ export default function ShipmentsPage() {
         </form>
       </div>
 
-      {/* Tabla */}
+      {/* Tabla agrupada por remitente */}
       <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -125,55 +126,103 @@ export default function ShipmentsPage() {
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {loading ? (
                 <tr><td colSpan={7} className="py-12 text-center text-gray-400">Cargando...</td></tr>
               ) : shipments.length === 0 ? (
                 <tr><td colSpan={7} className="py-12 text-center text-gray-400">No se encontraron envíos</td></tr>
-              ) : (
-                shipments.map(s => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-blue-700 font-medium">{s.guideNumber}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{s.recipientName}</p>
-                      {s.recipientPhone && <p className="text-xs text-gray-400">{s.recipientPhone}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {s.destination ? `${s.destination.city}, ${s.destination.state}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {PACKAGE_TYPES[s.packageType] ?? s.packageType}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${STATUS_COLORS[s.status]}`}>
-                        {STATUS_LABELS[s.status] ?? s.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {new Date(s.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 justify-end">
-                        <Link href={`/dashboard/shipments/${s.id}`} className="text-blue-600 hover:underline text-xs font-medium">
-                          Ver →
-                        </Link>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(s.id, s.guideNumber)}
-                            disabled={deletingId === s.id}
-                            className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
-                            title="Eliminar envío"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
+              ) : (() => {
+                // Agrupar por remitente manteniendo orden de aparición
+                const order: string[] = []
+                const groups: Record<string, any[]> = {}
+                for (const s of shipments) {
+                  if (!groups[s.senderName]) { groups[s.senderName] = []; order.push(s.senderName) }
+                  groups[s.senderName].push(s)
+                }
+                return order.map(senderName => {
+                  const group = groups[senderName]
+                  const collapsed = collapsedSenders.has(senderName)
+                  const toggle = () => setCollapsedSenders(prev => {
+                    const next = new Set(prev)
+                    next.has(senderName) ? next.delete(senderName) : next.add(senderName)
+                    return next
+                  })
+                  const batchUrl = `/print/batch?guides=${group.map(s => s.guideNumber).join(',')}`
+                  return (
+                    <>
+                      {/* Fila cabecera del grupo */}
+                      <tr key={`group-${senderName}`} className="bg-blue-50 border-y border-blue-100">
+                        <td colSpan={5} className="px-4 py-2">
+                          <button onClick={toggle} className="flex items-center gap-2 text-sm font-semibold text-blue-900 hover:text-blue-700">
+                            {collapsed
+                              ? <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                              : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
+                            {senderName}
+                            <span className="ml-1 text-xs font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                              {group.length} {group.length === 1 ? 'envío' : 'envíos'}
+                            </span>
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+                        </td>
+                        <td colSpan={2} className="px-4 py-2 text-right">
+                          {group.length > 1 && (
+                            <a
+                              href={batchUrl}
+                              target="_blank"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 px-3 py-1 rounded-lg transition-colors"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              Imprimir todas
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                      {/* Filas de envíos del grupo */}
+                      {!collapsed && group.map(s => (
+                        <tr key={s.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                          <td className="px-4 py-3 pl-10">
+                            <span className="font-mono text-xs text-blue-700 font-medium">{s.guideNumber}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-gray-900">{s.recipientName}</p>
+                            {s.recipientPhone && <p className="text-xs text-gray-400">{s.recipientPhone}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {s.destination ? `${s.destination.city}, ${s.destination.state}` : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {PACKAGE_TYPES[s.packageType] ?? s.packageType}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`badge ${STATUS_COLORS[s.status]}`}>
+                              {STATUS_LABELS[s.status] ?? s.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">
+                            {new Date(s.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 justify-end">
+                              <Link href={`/dashboard/shipments/${s.id}`} className="text-blue-600 hover:underline text-xs font-medium">
+                                Ver →
+                              </Link>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDelete(s.id, s.guideNumber)}
+                                  disabled={deletingId === s.id}
+                                  className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                                  title="Eliminar envío"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )
+                })
+              })()}
             </tbody>
           </table>
         </div>

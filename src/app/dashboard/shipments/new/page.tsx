@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, User, MapPin, ArrowLeft, CheckCircle, BookUser, X, Search, Plus, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { Package, User, MapPin, ArrowLeft, CheckCircle, BookUser, X, Search, Plus, Trash2, Upload } from 'lucide-react'
 import { AddressAutocomplete } from '@/components/AddressAutocomplete'
 
 const STATES_MX = [
@@ -143,6 +144,10 @@ export default function NewShipmentPage() {
         </div>
         <div className="ml-auto flex gap-2">
           {error && <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-1.5">{error}</p>}
+          <Link href="/dashboard/shipments/import" className="btn-secondary !py-1.5 !text-xs flex items-center gap-1.5">
+            <Upload className="w-3.5 h-3.5" />
+            Importar Excel
+          </Link>
           <button type="button" className="btn-secondary !py-1.5 !text-xs" onClick={() => router.back()}>Cancelar</button>
           <button form="shipment-form" type="submit" className="btn-primary !py-1.5 !text-xs" disabled={loading}>
             {loading ? 'Creando...' : recipients.length === 1 ? 'Generar guía' : `Generar ${recipients.length} guías`}
