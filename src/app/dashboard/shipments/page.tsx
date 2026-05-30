@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Filter, RefreshCw, Trash2, Download, Printer, ChevronDown, ChevronRight } from 'lucide-react'
 import { STATUS_LABELS, STATUS_COLORS, PACKAGE_TYPES } from '@/lib/utils'
@@ -149,7 +149,7 @@ export default function ShipmentsPage() {
                   })
                   const batchUrl = `/print/batch?guides=${group.map(s => s.guideNumber).join(',')}`
                   return (
-                    <>
+                    <Fragment key={senderName}>
                       {/* Fila cabecera del grupo */}
                       <tr key={`group-${senderName}`} className="bg-blue-50 border-y border-blue-100">
                         <td colSpan={5} className="px-4 py-2">
@@ -219,7 +219,7 @@ export default function ShipmentsPage() {
                           </td>
                         </tr>
                       ))}
-                    </>
+                    </Fragment>
                   )
                 })
               })()}
