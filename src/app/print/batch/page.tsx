@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import { Printer } from 'lucide-react'
 
-export default function BatchPrintPage() {
+function BatchPrintContent() {
   const searchParams = useSearchParams()
   const [shipments, setShipments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,5 +133,13 @@ export default function BatchPrintPage() {
         })}
       </div>
     </div>
+  )
+}
+
+export default function BatchPrintPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Cargando guías...</div>}>
+      <BatchPrintContent />
+    </Suspense>
   )
 }
