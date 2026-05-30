@@ -10,6 +10,8 @@ const UpdateStatusSchema = z.object({
   location: z.string().optional(),
 })
 
+const ApproveSchema = z.object({ _approve: z.literal(true) })
+
 const AssignDriverSchema = z.object({
   _assign: z.literal(true),
   assignedDriverId: z.string().nullable(),
@@ -76,6 +78,27 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
+
+  // ── Rama aprobación de solicitud WhatsApp ─────────────────────────────────
+  if (body._approve) {
+    if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Solo administradores' }, { status: 403 })
+    const shipment = await prisma.shipment.findUnique({ where: { id: params.id } })
+    if (!shipment) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    if (shipment.status !== 'PENDING') return NextResponse.json({ error: 'El envío no está pendiente de aprobación' }, { status: 400 })
+
+    const [updated] = await Promise.all([
+      prisma.shipment.update({ where: { id: params.id }, data: { status: 'RECEIVED' } }),
+      prisma.trackingEvent.create({
+        data: {
+          shipmentId:  params.id,
+          status:      'RECEIVED',
+          description: 'Solicitud aprobada por administrador',
+          createdById: user.id,
+        },
+      }),
+    ])
+    return NextResponse.json({ shipment: updated })
+  }
 
   // Rama asignación de chofer
   if (body._assign) {

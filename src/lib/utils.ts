@@ -15,6 +15,7 @@ export function generateGuideNumber(agencyCode: string): string {
 }
 
 export const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente de aprobación',
   RECEIVED: 'Recibido en bodega',
   IN_TRANSIT: 'En tránsito',
   OUT_FOR_DELIVERY: 'En ruta de entrega',
@@ -41,6 +42,7 @@ export function getStatusLabel(
 }
 
 export const STATUS_COLORS: Record<string, string> = {
+  PENDING: 'bg-purple-100 text-purple-800',
   RECEIVED: 'bg-blue-100 text-blue-800',
   IN_TRANSIT: 'bg-yellow-100 text-yellow-800',
   OUT_FOR_DELIVERY: 'bg-orange-100 text-orange-800',

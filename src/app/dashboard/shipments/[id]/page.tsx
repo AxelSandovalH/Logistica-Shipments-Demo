@@ -111,6 +111,17 @@ export default function ShipmentDetailPage() {
     setSaving(false)
   }
 
+  async function approveShipment() {
+    setUpdating(true)
+    await fetch(`/api/shipments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _approve: true }),
+    })
+    await fetchShipment()
+    setUpdating(false)
+  }
+
   async function updateStatus() {
     setUpdating(true)
     await fetch(`/api/shipments/${id}`, {
@@ -161,6 +172,26 @@ export default function ShipmentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Banner de aprobación */}
+      {shipment.status === 'PENDING' && (
+        <div className="mb-6 bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⏳</span>
+            <div>
+              <p className="font-semibold text-purple-900">Solicitud pendiente de aprobación</p>
+              <p className="text-sm text-purple-700">Este envío fue registrado vía WhatsApp y requiere tu aprobación para ingresar al sistema.</p>
+            </div>
+          </div>
+          <button
+            onClick={approveShipment}
+            disabled={updating}
+            className="flex-shrink-0 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg text-sm disabled:opacity-50"
+          >
+            {updating ? 'Aprobando...' : '✓ Aprobar envío'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

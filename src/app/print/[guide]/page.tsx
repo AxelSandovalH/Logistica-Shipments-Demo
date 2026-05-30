@@ -87,7 +87,11 @@ export default function PublicPrintPage() {
             <div className="px-5 py-4 border-r border-gray-300">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Destinatario (México)</p>
               <p className="font-bold text-gray-900 text-base">{shipment.recipientName}</p>
-              {shipment.recipientPhone && <p className="text-sm text-gray-600">{shipment.recipientPhone}</p>}
+              {shipment.recipientPhone && (
+                <p className="text-sm text-gray-600">
+                  {shipment.recipientPhone.slice(0, -4).replace(/\d/g, '*') + shipment.recipientPhone.slice(-4)}
+                </p>
+              )}
               {shipment.destination && (
                 <div className="mt-1 text-sm text-gray-600">
                   <p>{shipment.destination.street}{shipment.destination.colonia ? `, ${shipment.destination.colonia}` : ''}</p>
@@ -106,7 +110,7 @@ export default function PublicPrintPage() {
                 <div className="text-sm text-gray-700 space-y-0.5">
                   {shipment.weight && <p>Peso: <span className="font-medium">{shipment.weight} kg</span></p>}
                   {shipment.pieces > 1 && <p>Piezas: <span className="font-medium">{shipment.pieces}</span></p>}
-                  {shipment.description && <p>Contenido: <span className="font-medium">{shipment.description}</span></p>}
+                  {/* Contenido omitido en etiqueta por seguridad */}
                   {shipment.serviceType && (
                     <p>Servicio: <span className="font-medium">
                       {shipment.serviceType === 'EXPRESS' ? 'Express' : shipment.serviceType === 'ECONOMY' ? 'Económico' : 'Estándar'}
