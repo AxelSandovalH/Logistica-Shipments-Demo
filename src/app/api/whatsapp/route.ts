@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { sendWhatsapp } from '@/lib/ultramsg'
 import { generateGuideNumber } from '@/lib/utils'
 
+export const maxDuration = 60 // segundos — necesario para conversaciones multi-turno
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Única herramienta: registrar solicitud de envío ───────────────────────────
@@ -173,13 +175,22 @@ Reglas importantes:
     if (response.stop_reason === 'tool_use') {
       loopMessages.push({ role: 'assistant', content: response.content })
       const results: Anthropic.ToolResultBlockParam[] = []
+      let toolOutput = ''
       for (const block of response.content) {
         if (block.type !== 'tool_use') continue
         const result = await runTool(block.name, block.input)
         results.push({ type: 'tool_result', tool_use_id: block.id, content: result })
+        toolOutput = result
       }
       loopMessages.push({ role: 'user', content: results })
-      // Continúa el loop para que Claude genere la respuesta de confirmación
+
+      // Usar el resultado del tool directamente como respuesta final.
+      // Evita una segunda llamada a Claude (ahorra ~4s y previene timeout en Vercel).
+      if (toolOutput) {
+        finalText = toolOutput
+        loopMessages.push({ role: 'assistant', content: [{ type: 'text', text: toolOutput }] })
+        break
+      }
       continue
     }
 
