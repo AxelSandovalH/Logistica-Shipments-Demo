@@ -103,25 +103,11 @@ export default function PublicPrintPage() {
               )}
             </div>
 
-            {/* Paquete + QR tracking */}
-            <div className="px-5 py-4 flex flex-col gap-3">
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Paquete</p>
-                <div className="text-sm text-gray-700 space-y-0.5">
-                  {shipment.weight && <p>Peso: <span className="font-medium">{shipment.weight} kg</span></p>}
-                  {shipment.pieces > 1 && <p>Piezas: <span className="font-medium">{shipment.pieces}</span></p>}
-                  {/* Contenido omitido en etiqueta por seguridad */}
-                  {shipment.serviceType && (
-                    <p>Servicio: <span className="font-medium">
-                      {shipment.serviceType === 'EXPRESS' ? 'Express' : shipment.serviceType === 'ECONOMY' ? 'Económico' : 'Estándar'}
-                    </span></p>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <QRCode value={trackUrl} size={75} />
-                <p className="text-xs text-gray-400 mt-1 text-center">Tracking cliente</p>
-              </div>
+            {/* QR tracking — detalles del paquete omitidos por seguridad */}
+            <div className="px-5 py-4 flex flex-col items-center justify-center gap-2">
+              <QRCode value={trackUrl} size={110} />
+              <p className="text-xs text-gray-400 text-center">Seguimiento del envío</p>
+              <p className="text-[10px] text-gray-300 text-center">Detalles visibles al escanear</p>
             </div>
           </div>
 
